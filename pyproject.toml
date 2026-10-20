@@ -8,8 +8,11 @@ readme = "README.md"
 requires-python = ">=3.12"
 # Нижние границы версий; точные версии всех пакетов записаны в uv.lock.
 dependencies = [
+    "alembic>=1.16,<2",            # Версионированные миграции схемы PostgreSQL.
     "fastapi>=0.142.2",            # Маршруты API, проверка данных, страница /docs.
+    "psycopg[binary]>=3.2,<4",     # Драйвер PostgreSQL 3-й версии для SQLAlchemy.
     "pydantic-settings>=2.15.0",   # Настройки из переменных окружения и .env.
+    "sqlalchemy>=2.0,<3",          # Модели таблиц, соединения, сессии и транзакции.
     "uvicorn[standard]>=0.54.0",   # ASGI-сервер, который слушает порт и вызывает app.
 ]
 
@@ -36,6 +39,9 @@ testpaths = ["tests"]
 pythonpath = ["."]
 # Неизвестный marker считается ошибкой, а не тихо пропущенной проверкой.
 addopts = "--strict-markers"
+markers = [
+    "integration: tests on a real PostgreSQL from TEST_DATABASE_URL (database name must end with _test)",
+]
 
 # Ruff проверяет код с учётом синтаксиса Python 3.12.
 [tool.ruff]

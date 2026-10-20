@@ -1,4 +1,5 @@
-# Базовый CI этапа 01: те же проверки, что выполняются локально перед коммитом.
+# CI: те же проверки, что выполняются локально перед коммитом,
+# плюс миграции и интеграционные тесты на настоящей PostgreSQL.
 name: CI
 
 # Локальный git commit не запускает CI: нужен push на GitHub или pull request.
@@ -23,6 +24,26 @@ jobs:
     name: Lint, types and tests
     runs-on: ubuntu-24.04
     timeout-minutes: 10
+    # Отдельная PostgreSQL этого запуска: тесты вправе сбрасывать её схему.
+    # Образ закреплён тем же digest, что в compose.yaml.
+    services:
+      postgres:
+        image: postgres:17@sha256:2d2b8998d31037bf721cfdf764d76ba74171b4fab3431b7f72c27c56ddbdf9e3
+        env:
+          POSTGRES_USER: analyst
+          POSTGRES_PASSWORD: analyst_ci
+          POSTGRES_DB: industrialflow_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -h 127.0.0.1 -U analyst -d industrialflow_test"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 30
+    env:
+      # Alembic в шагах ниже и интеграционные тесты работают с одной базой *_test.
+      DATABASE_URL: postgresql+psycopg://analyst:analyst_ci@127.0.0.1:5432/industrialflow_test
+      TEST_DATABASE_URL: postgresql+psycopg://analyst:analyst_ci@127.0.0.1:5432/industrialflow_test
     steps:
       # Действия закреплены полным SHA коммита: тег можно переписать, SHA — нет.
       - name: Checkout repository
@@ -49,7 +70,23 @@ jobs:
         run: uv run --locked ruff format --check .
 
       - name: Mypy
-        run: uv run --locked mypy app tests
+        run: uv run --locked mypy app tests migrations
 
+      # Схема создаётся только миграциями — так же, как у пользователя.
+      - name: Apply migrations
+        run: uv run --locked alembic upgrade head
+
+      # Модели и миграции совпадают: забытая миграция остановит CI здесь.
+      - name: Check models match migrations
+        run: uv run --locked alembic check
+
+      # Откат до пустой базы и повторное применение тоже должны работать.
+      - name: Check downgrade and upgrade
+        run: |
+          uv run --locked alembic downgrade base
+          uv run --locked alembic upgrade head
+
+      # GitHub задаёт CI=true: без TEST_DATABASE_URL интеграционные тесты
+      # упали бы, а не тихо пропустились.
       - name: Pytest
         run: uv run --locked pytest
