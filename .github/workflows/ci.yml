@@ -1,0 +1,55 @@
+# Базовый CI этапа 01: те же проверки, что выполняются локально перед коммитом.
+name: CI
+
+# Локальный git commit не запускает CI: нужен push на GitHub или pull request.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+# Заданию нужно только читать код репозитория.
+permissions:
+  contents: read
+
+# Новый push в тот же PR отменяет устаревшую проверку этого PR.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  checks:
+    name: Lint, types and tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      # Действия закреплены полным SHA коммита: тег можно переписать, SHA — нет.
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          version: "0.12.23"
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+
+      # --locked завершает проверку ошибкой, если uv.lock расходится с pyproject.
+      - name: Install locked dependencies
+        run: uv sync --locked
+
+      - name: Ruff lint
+        run: uv run --locked ruff check .
+
+      - name: Ruff format
+        run: uv run --locked ruff format --check .
+
+      - name: Mypy
+        run: uv run --locked mypy app tests
+
+      - name: Pytest
+        run: uv run --locked pytest

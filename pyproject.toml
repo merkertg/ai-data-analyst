@@ -1,0 +1,54 @@
+# Основные сведения о проекте и библиотеки, нужные для запуска API.
+[project]
+name = "ai-data-analyst"
+version = "0.1.0"
+description = "AI analyst for IndustrialFlow sales data: deterministic metrics, anomaly detection and LLM tool calling"
+readme = "README.md"
+# Ограничение проверяется при выборе Python для окружения проекта.
+requires-python = ">=3.12"
+# Нижние границы версий; точные версии всех пакетов записаны в uv.lock.
+dependencies = [
+    "fastapi>=0.142.2",            # Маршруты API, проверка данных, страница /docs.
+    "pydantic-settings>=2.15.0",   # Настройки из переменных окружения и .env.
+    "uvicorn[standard]>=0.54.0",   # ASGI-сервер, который слушает порт и вызывает app.
+]
+
+# Политика зависимостей: в lock попадают только выпуски старше двух недель.
+# uv не видит файлы PyPI новее этой даты. При обновлении зависимостей сдвигай
+# дату не ближе чем на 14 дней к текущему дню.
+[tool.uv]
+exclude-newer = "2026-10-06T00:00:00Z"
+
+# Инструменты разработки: uv sync устанавливает группу dev по умолчанию,
+# а в будущий production-образ она не попадёт.
+[dependency-groups]
+dev = [
+    "httpx2>=2.13.1",   # HTTP-клиент, на котором работает TestClient в Starlette 1.7+.
+    "mypy>=2.4.0",      # Статическая проверка типов.
+    "pytest>=9.1.1",    # Находит и запускает автоматические тесты.
+    "ruff>=0.16.10",    # Линтер и форматировщик кода.
+]
+
+# Pytest ищет тесты в tests/ и добавляет корень проекта в путь импортов:
+# без pythonpath строка «from app.main import app» в тестах не найдёт пакет app.
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+# Неизвестный marker считается ошибкой, а не тихо пропущенной проверкой.
+addopts = "--strict-markers"
+
+# Ruff проверяет код с учётом синтаксиса Python 3.12.
+[tool.ruff]
+target-version = "py312"
+line-length = 88
+
+# E — стиль, F — ошибки кода, I — порядок импортов, UP — современный Python,
+# B — типичные ловушки вроде изменяемого значения аргумента по умолчанию.
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+# Строгий режим: у каждой функции должны быть аннотации, Any не просачивается.
+# Плагин Pydantic объясняет mypy, как устроены поля моделей и настроек.
+[tool.mypy]
+strict = true
+plugins = ["pydantic.mypy"]

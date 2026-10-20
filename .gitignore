@@ -1,0 +1,23 @@
+# Локальное окружение Python и кеши инструментов.
+.venv/
+__pycache__/
+*.py[oc]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Результаты сборки пакета.
+build/
+dist/
+wheels/
+*.egg-info
+
+# Локальные настройки и секреты. Образец .env.example хранится в Git.
+.env
+.env.*
+!.env.example
+
+# Служебные файлы редакторов и macOS.
+.DS_Store
+.idea/
+.vscode/
