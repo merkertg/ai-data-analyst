@@ -1,0 +1,104 @@
+{
+  "checked_at": "2026-10-20",
+  "base_commit": "4448e55",
+  "stage": 1,
+  "environment": {
+    "os": "macOS, Apple Silicon",
+    "uv": "0.12.23",
+    "python": "3.12.15"
+  },
+  "tests": {
+    "total": 7,
+    "passed": 7,
+    "failed": 0,
+    "skipped": 0,
+    "seconds": 0.27
+  },
+  "checks": [
+    {
+      "name": "Тесты",
+      "command": "uv run pytest",
+      "result": "7 passed, 0 failed, 0 skipped",
+      "status": "pass"
+    },
+    {
+      "name": "Линтер",
+      "command": "uv run ruff check .",
+      "result": "All checks passed",
+      "status": "pass"
+    },
+    {
+      "name": "Формат",
+      "command": "uv run ruff format --check .",
+      "result": "Все файлы отформатированы, включая Python-блоки в Markdown",
+      "status": "pass"
+    },
+    {
+      "name": "Типы",
+      "command": "uv run mypy app tests",
+      "result": "Success: no issues found in 6 source files",
+      "status": "pass"
+    },
+    {
+      "name": "Lock-файл",
+      "command": "uv lock --check",
+      "result": "uv.lock соответствует pyproject.toml",
+      "status": "pass"
+    },
+    {
+      "name": "Чистый клон",
+      "command": "git clone → uv sync --locked → все проверки",
+      "result": "Коммит 4448e55 собирается и проходит проверки с нуля",
+      "status": "pass"
+    },
+    {
+      "name": "Workflow",
+      "command": "actionlint .github/workflows/ci.yml",
+      "result": "actionlint 1.7.12: ошибок нет",
+      "status": "pass"
+    },
+    {
+      "name": "Возраст пакетов",
+      "command": "даты upload-time в uv.lock",
+      "result": "38 пакетов; самый новый — websockets 17.2 от 2026-10-03",
+      "status": "pass"
+    },
+    {
+      "name": "Сервер",
+      "command": "uv run uvicorn app.main:app + curl",
+      "result": "Uvicorn запустился; ответы ниже в таблице HTTP",
+      "status": "pass"
+    }
+  ],
+  "http": [
+    {
+      "request": "GET /health",
+      "status": "200 OK",
+      "body": "{\"status\":\"ok\"}"
+    },
+    {
+      "request": "POST /health",
+      "status": "405 Method Not Allowed",
+      "body": "{\"detail\":\"Method Not Allowed\"}, allow: GET"
+    },
+    {
+      "request": "GET /nope",
+      "status": "404 Not Found",
+      "body": "{\"detail\":\"Not Found\"}"
+    },
+    {
+      "request": "GET /docs",
+      "status": "200 OK",
+      "body": "HTML-страница Swagger UI"
+    }
+  ],
+  "remote_ci": {
+    "status": "not_verified",
+    "detail": "Репозиторий на GitHub ещё не создан, поэтому удалённый запуск Actions не выполнялся. Workflow проверен actionlint, его команды прошли в чистом клоне."
+  },
+  "remaining": [
+    "Создать репозиторий ai-data-analyst на GitHub, отправить ветку main и дождаться зелёного задания в Actions.",
+    "Выполнить самостоятельное задание: маршрут GET /version с моделью VersionResponse и тестом.",
+    "Этап 02: PostgreSQL в Docker Compose, модели SQLAlchemy 2 и первая миграция Alembic."
+  ]
+}
