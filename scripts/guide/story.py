@@ -1,4 +1,4 @@
-"""Порядок страниц PDF: обзор, этапы 01–02, CI, справочные разделы и итоги."""
+"""Порядок страниц PDF: обзор, этапы 01–03, CI, справочные разделы и итоги."""
 
 from html import escape
 
@@ -36,6 +36,7 @@ from guide.layout import (
 )
 from guide.stage01 import add_stage01
 from guide.stage02 import add_stage02
+from guide.stage03 import add_stage03
 from guide.toc import section
 
 # Плотные ячейки для таблиц итогов: страница итогов помещается целиком.
@@ -92,14 +93,13 @@ def build_story(verification, dependencies, lock_packages, facts, counts):
                 "датчики. Руководитель задаёт вопрос обычным языком, а агент вызывает "
                 "аналитические инструменты, точно считает показатели и пишет отчёт. "
                 f"Готовы этапы 01–{STAGES_DONE:02d}: каркас API с проверками и CI, "
-                "база PostgreSQL со схемой, правилами целостности и миграциями.",
+                "база PostgreSQL, воспроизводимые данные и проверки качества.",
                 "<b>AI Data Analyst</b> is an AI analyst for <b>IndustrialFlow</b>, a "
                 "fictional company selling pumps, compressors, valves and sensors. A "
                 "manager asks in plain language; the agent calls analytics tools, "
                 "computes exact metrics and writes a report. "
                 f"Stages 01–{STAGES_DONE:02d} are done: an API foundation with checks "
-                "and CI, and a PostgreSQL database with a schema, integrity rules and "
-                "migrations.",
+                "and CI, a PostgreSQL database, reproducible data and quality checks.",
             )
         ),
         Spacer(1, 10),
@@ -192,10 +192,10 @@ def build_story(verification, dependencies, lock_packages, facts, counts):
         Spacer(1, 8),
         callout(
             tr(
-                "<b>Чего ещё нет:</b> демонстрационного датасета (этап 03), аналитики "
-                "(04–05), REST API метрик (06), LLM-агента (07) и интерфейса (08).",
-                "<b>Not there yet:</b> the demo dataset (Stage 03), analytics (04–05), "
-                "the metrics REST API (06), the LLM agent (07) and the UI (08).",
+                "<b>Чего ещё нет:</b> аналитики (04–05), REST API метрик (06), "
+                "LLM-агента (07) и интерфейса (08).",
+                "<b>Not there yet:</b> analytics (04–05), the metrics REST API (06), "
+                "the LLM agent (07) and the UI (08).",
             ),
             AMBER,
             AMBER_L,
@@ -218,12 +218,13 @@ def build_story(verification, dependencies, lock_packages, facts, counts):
 
     add_stage01(story, verification, dependencies, lock_packages, facts)
     add_stage02(story, verification, counts)
+    add_stage03(story)
 
-    # 21. CI на GitHub Actions
+    # 24. CI на GitHub Actions
     remote = verification["remote_ci"]
     section(
         story,
-        21,
+        24,
         tr(
             "Те же проверки на чистой Linux-машине с отдельной PostgreSQL.",
             "The same checks on a clean Linux machine with its own PostgreSQL.",
@@ -294,13 +295,13 @@ def build_story(verification, dependencies, lock_packages, facts, counts):
         ),
     ]
 
-    # 22. Шпаргалка команд
+    # 25. Шпаргалка команд
     section(
         story,
-        22,
+        25,
         tr(
-            "Все команды этапов 01–02 на одной странице.",
-            "All Stage 01–02 commands on one page.",
+            "Основные команды этапов 01–03.",
+            "Essential commands for Stages 01–03.",
         ),
         TEAL,
     )
@@ -309,19 +310,22 @@ def build_story(verification, dependencies, lock_packages, facts, counts):
             tr("Создать окружение по lock", "Create the environment from the lock"),
             "uv sync --locked",
         ),
-        (tr("Локальные настройки", "Local settings"), "cp .env.example .env"),
         (
             tr("Запустить PostgreSQL", "Start PostgreSQL"),
             "docker compose up --detach --wait db",
         ),
         (tr("Применить миграции", "Apply migrations"), "uv run alembic upgrade head"),
         (
-            tr("Загрузить учебный набор", "Load the sample data"),
-            "uv run python -m app.db.sample",
+            tr("Создать demo", "Generate demo"),
+            "uv run python -m app.data.generate --output data/demo",
         ),
         (
-            tr("Открыть psql", "Open psql"),
-            "docker compose exec db psql -U analyst -d industrialflow",
+            tr("Загрузить demo", "Load demo"),
+            "uv run python -m app.data.load --input data/demo",
+        ),
+        (
+            tr("Качество данных", "Data quality"),
+            "uv run python -m app.data.quality",
         ),
         (
             tr("Запустить сервер", "Start the server"),
@@ -356,9 +360,7 @@ def build_story(verification, dependencies, lock_packages, facts, counts):
         ),
         (tr("Версия схемы", "Schema version"), "uv run alembic current"),
         (tr("Остановить базу", "Stop the database"), "docker compose stop"),
-        (tr("Добавить библиотеку", "Add a library"), "uv add <package>"),
         (tr("Проверить lock", "Check the lock"), "uv lock --check"),
-        (tr("Кто занял порт", "Who holds a port"), "lsof -i :8000"),
         (
             tr("Пересобрать PDF", "Rebuild the PDF"),
             "uv run --with 'reportlab==4.4.9' python scripts/build_guide.py",
@@ -372,10 +374,10 @@ def build_story(verification, dependencies, lock_packages, facts, counts):
         )
     )
 
-    # 23. Типичные ошибки
+    # 26. Типичные ошибки
     section(
         story,
-        23,
+        26,
         tr("Симптом, причина и что сделать.", "Symptom, cause and fix."),
         ORANGE,
     )
@@ -498,10 +500,10 @@ def build_story(verification, dependencies, lock_packages, facts, counts):
         )
     )
 
-    # 24. Проверь себя
+    # 27. Проверь себя
     section(
         story,
-        24,
+        27,
         tr(
             "Вопросы для самопроверки и самостоятельные задания.",
             "Self-check questions and practice tasks.",
@@ -644,15 +646,15 @@ def build_story(verification, dependencies, lock_packages, facts, counts):
         ),
     ]
 
-    # 25. Итоги проверки
+    # 28. Итоги проверки
     environment = verification["environment"]
     section(
         story,
-        25,
+        28,
         tr(
-            f"Что фактически проверено {verification['checked_at']} на коммите "
+            f"Дата проверки: {verification['checked_at']}; база рабочего дерева: "
             f"{verification['base_commit']}.",
-            f"What was actually verified on {verification['checked_at']} at commit "
+            f"Verified on {verification['checked_at']}; working-tree base: "
             f"{verification['base_commit']}.",
         ),
         GREEN,

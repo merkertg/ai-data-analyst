@@ -21,3 +21,6 @@ wheels/
 .DS_Store
 .idea/
 .vscode/
+
+# Rebuild the fictional CSV dataset with python -m app.data.generate.
+data/demo*/

@@ -2,7 +2,7 @@
 
 [← README](../../README.md) · [All documentation](../../README.md#documentation)
 
-Install uv, start PostgreSQL, apply migrations, start the API and check that it is ready. Detailed walkthroughs in Russian are in the [Stage 01](../STAGE_01.md) and [Stage 02](../STAGE_02.md) guides.
+Install uv, start PostgreSQL, apply migrations, start the API and check that it is ready. Detailed walkthroughs in Russian are in the [Stage 01](../STAGE_01.md), [Stage 02](../STAGE_02.md) and [Stage 03](../STAGE_03.md) guides.
 
 ## Requirements
 
@@ -19,7 +19,7 @@ Run all commands from the project root, the directory containing `pyproject.toml
 | --- | --- | --- |
 | Python on the host | `uv sync --locked`, Python 3.12 | same |
 | PostgreSQL | Docker Desktop | Docker Engine or Desktop |
-| Verified by | Local run: tests, Ruff, mypy, Uvicorn, curl, Compose | GitHub Actions on `ubuntu-24.04` with a PostgreSQL service |
+| Verification | Local checks recorded in VERIFICATION.md | Workflow targets `ubuntu-24.04`; remote result is not yet confirmed |
 | Shell for the guides | zsh or Bash | Bash |
 
 Windows is not checked yet.
@@ -54,11 +54,17 @@ docker compose up --detach --wait db
 uv run alembic upgrade head
 ```
 
-Optionally load the small sample dataset:
+Choose a dataset before loading. On a new empty migrated database, generate and load the full demo dataset:
 
 ```bash
-uv run python -m app.db.sample
+uv run python -m app.data.generate --output data/demo --seed 42 --orders 20000
+uv run python -m app.data.load --input data/demo
+uv run python -m app.data.quality
 ```
+
+Generation requires a new or empty output directory. Loading requires all six domain tables to be empty and never overwrites existing data. The quality command is read-only; exit `0` means its rules pass. See [Demo data](demo-data.md) for scenarios, the manifest and evaluation ground truth.
+
+For the small Stage 02 SQL exercise, use `uv run python -m app.db.sample` instead on a separate empty database. Do not load the sample before the full demo in the same database.
 
 See [Database](database.md) for psql, SQL examples and schema changes.
 

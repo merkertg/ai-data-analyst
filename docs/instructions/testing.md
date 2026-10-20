@@ -16,24 +16,16 @@ export TEST_DATABASE_URL='postgresql+psycopg://analyst:analyst_test@127.0.0.1:54
 uv run --locked pytest -v
 ```
 
-Expected results after Stage 02:
-
-| Command | Result |
-| --- | --- |
-| `ruff check .` | `All checks passed!` |
-| `ruff format --check .` | `... files already formatted` |
-| `mypy app tests migrations` | `Success: no issues found in 22 source files` |
-| `pytest -v` with `TEST_DATABASE_URL` | `60 passed` |
-| `pytest -v` without `TEST_DATABASE_URL` | `26 passed, 34 skipped` |
+A successful run reports no Ruff or mypy issues and no failed tests. Exact test counts and actual local outcomes are recorded in [VERIFICATION.md](../VERIFICATION.md); the remote GitHub Actions result is confirmed separately. Without `TEST_DATABASE_URL`, local integration tests are skipped.
 
 `ruff format` also checks Python code blocks inside Markdown files, so code examples in the documentation must be formatted too. Fix formatting with `uv run --locked ruff format .` and safe lint issues with `uv run --locked ruff check --fix .`.
 
 ## Unit and integration tests
 
-| Group | Location | Needs a database | Count |
-| --- | --- | --- | --- |
-| Unit | `tests/*.py` | No | 26 |
-| Integration | `tests/integration/` (marker `integration`) | Yes, from `TEST_DATABASE_URL` | 34 |
+| Group | Location | Needs a database |
+| --- | --- | --- |
+| Unit | `tests/*.py` | No |
+| Integration | `tests/integration/` (marker `integration`) | Yes, from `TEST_DATABASE_URL` |
 
 Integration tests drop and recreate the schema, so they only run against a database whose name ends with `_test`, and only from `TEST_DATABASE_URL` — never from `DATABASE_URL` or `.env`. Locally, without the variable they are skipped; on GitHub Actions (`CI=true`) a missing variable is a failure.
 
@@ -50,6 +42,8 @@ Fixtures: `migrated_engine` builds the schema once per run with `alembic downgra
 | `tests/integration/test_migrations.py` | Upgrade, downgrade round trip, `alembic check`, `/ready` on a real database |
 | `tests/integration/test_constraints.py` | 20 invalid rows rejected by the named constraint, cascade delete, exact `Decimal`, `timestamptz` |
 | `tests/integration/test_queries.py` | The four files in `sql/` return hand-computed results on the sample data |
+| `tests/test_demo_data.py`, `tests/test_data_quality.py` | Seeded generation, equal bundle bytes, money, scenarios, bundle validation and quality report behaviour |
+| `tests/integration/test_demo_data.py`, `tests/integration/test_data_quality.py` | Empty-table loading, transaction rollback, existing-data refusal and cross-table quality violations |
 
 Useful options:
 
@@ -60,6 +54,12 @@ uv run --locked pytest -x
 ```
 
 `-m` selects tests by marker; `-x` stops at the first failure. Stop the test database with `docker compose --profile test stop db-test`; its data lives in memory and disappears.
+
+## Demo data
+
+See [Demo data](demo-data.md) for the three CLI commands and their expected behaviour. Generation requires no database. The loader validates a complete bundle and writes only into empty domain tables in one transaction. The quality CLI is read-only; its exit code is `0` for passing checks and `1` for violations. Business scenarios A01–A05 are valid rows and must pass the quality checks.
+
+For a manual check, generate two bundles in different new directories with the same seed and order count, then compare them with `diff -r`. Run destructive fixture and rollback tests only through the integration suite, with `TEST_DATABASE_URL` ending in `_test`.
 
 ## Migrations
 

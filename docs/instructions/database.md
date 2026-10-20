@@ -36,7 +36,17 @@ Expected output: `0001 (head)`. `curl http://127.0.0.1:8000/ready` returns `{"st
 uv run python -m app.db.sample
 ```
 
-Loads 2 customers, 3 products, 5 orders (3 paid, 1 cancelled, 1 pending), 2 refunds and 3 inventory snapshots, only if `customers` is empty. The expected answers are listed in `app/db/sample.py`. Stage 03 replaces this with a generated dataset.
+Loads 2 customers, 3 products, 5 orders (3 paid, 1 cancelled, 1 pending), 2 refunds and 3 inventory snapshots, only if `customers` is empty. The expected answers are listed in `app/db/sample.py`. It remains a separate fixture for the Stage 02 SQL exercise. The Stage 03 demo loader refuses any existing domain rows, so choose the sample or the full demo before loading into a database.
+
+## Full demo dataset and quality
+
+```bash
+uv run python -m app.data.generate --output data/demo --seed 42 --orders 20000
+uv run python -m app.data.load --input data/demo
+uv run python -m app.data.quality
+```
+
+Generation creates six CSV files, a manifest and evaluation ground truth, without using a database. Loading validates the bundle and uses one transaction against `DATABASE_URL`, requiring all six domain tables to be empty. It provides no reset option. Data quality checks only read the database: orders without lines, excessive aggregate refunds, refunds on unpaid orders and refunds before payment. See [Demo data](demo-data.md) and the Russian [Stage 03 guide](../STAGE_03.md).
 
 ## Run SQL
 

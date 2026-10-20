@@ -36,7 +36,7 @@ from guide.layout import (
 )
 
 # Сколько этапов курса уже выполнено: зелёные карточки дорожной карты.
-STAGES_DONE = 2
+STAGES_DONE = 3
 
 
 def roadmap(c, w, h):

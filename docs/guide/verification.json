@@ -1,7 +1,7 @@
 {
   "checked_at": "2026-10-20",
-  "base_commit": "cc7d851",
-  "stage": 2,
+  "base_commit": "1c24ce9 + worktree",
+  "stage": 3,
   "environment": {
     "os": {
       "ru": "macOS, Apple Silicon",
@@ -13,13 +13,13 @@
     "postgres": "17"
   },
   "tests": {
-    "total": 60,
-    "unit": 26,
-    "integration": 34,
-    "passed": 60,
+    "total": 106,
+    "unit": 52,
+    "integration": 54,
+    "passed": 106,
     "failed": 0,
     "skipped": 0,
-    "seconds": 1.19
+    "seconds": 2.82
   },
   "checks": [
     {
@@ -27,22 +27,10 @@
         "ru": "Тесты",
         "en": "Tests"
       },
-      "command": "TEST_DATABASE_URL=... uv run pytest",
+      "command": "CI=true TEST_DATABASE_URL=... .venv/bin/pytest -q",
       "result": {
-        "ru": "60 passed: 26 unit + 34 integration",
-        "en": "60 passed: 26 unit + 34 integration"
-      },
-      "status": "pass"
-    },
-    {
-      "name": {
-        "ru": "Строгий CI",
-        "en": "Strict CI"
-      },
-      "command": "CI=true uv run pytest  # no TEST_DATABASE_URL",
-      "result": {
-        "ru": "Интеграционные тесты падают, а не пропускаются",
-        "en": "Integration tests fail instead of being skipped"
+        "ru": "106 passed: 52 unit + 54 integration; 2.82 с",
+        "en": "106 passed: 52 unit + 54 integration; 2.82 s"
       },
       "status": "pass"
     },
@@ -51,7 +39,7 @@
         "ru": "Линтер",
         "en": "Lint"
       },
-      "command": "uv run ruff check .",
+      "command": ".venv/bin/ruff check .",
       "result": {
         "ru": "All checks passed",
         "en": "All checks passed"
@@ -63,10 +51,10 @@
         "ru": "Формат",
         "en": "Format"
       },
-      "command": "uv run ruff format --check .",
+      "command": ".venv/bin/ruff format --check .",
       "result": {
-        "ru": "Все файлы, включая Python-блоки в Markdown",
-        "en": "All files, including Python blocks in Markdown"
+        "ru": "Все Python-файлы и блоки Markdown",
+        "en": "All Python files and Markdown blocks"
       },
       "status": "pass"
     },
@@ -75,10 +63,10 @@
         "ru": "Типы",
         "en": "Types"
       },
-      "command": "uv run mypy app tests migrations",
+      "command": ".venv/bin/mypy app tests migrations",
       "result": {
-        "ru": "Success: no issues found in 22 source files",
-        "en": "Success: no issues found in 22 source files"
+        "ru": "Нет ошибок в 30 исходных файлах",
+        "en": "No issues in 30 source files"
       },
       "status": "pass"
     },
@@ -87,46 +75,46 @@
         "ru": "Миграции",
         "en": "Migrations"
       },
-      "command": "alembic upgrade head · check · downgrade base",
+      "command": "Alembic upgrade head / check / downgrade base",
       "result": {
-        "ru": "Все успешны; No new upgrade operations detected.",
-        "en": "All succeed; No new upgrade operations detected."
+        "ru": "Схема 0001; расхождений с моделями нет",
+        "en": "Schema 0001; no model drift"
       },
       "status": "pass"
     },
     {
       "name": {
-        "ru": "SQL-запросы",
-        "en": "SQL queries"
+        "ru": "Воспроизводимость",
+        "en": "Reproducibility"
       },
-      "command": "psql < sql/*.sql",
+      "command": "generate_dataset(42, 20000) + export twice",
       "result": {
-        "ru": "309 000.00 и 17 500.00 по месяцам; 338 000.00 против 328 000.00",
-        "en": "309,000.00 and 17,500.00 by month; 338,000.00 vs 328,000.00"
+        "ru": "Все 8 файлов побайтово совпали",
+        "en": "All 8 files match byte for byte"
       },
       "status": "pass"
     },
     {
       "name": {
-        "ru": "Готовность",
-        "en": "Readiness"
+        "ru": "Полный импорт",
+        "en": "Full import"
       },
-      "command": "uvicorn + curl /ready, docker compose stop/start db",
+      "command": "python -m app.data.load --input data/demo",
       "result": {
-        "ru": "200 → 503 при остановленной базе → снова 200",
-        "en": "200 → 503 with the database stopped → 200 again"
+        "ru": "20 000 заказов; повторный запуск: exit 1, данные сохранены",
+        "en": "20,000 orders; repeat run: exit 1, data preserved"
       },
       "status": "pass"
     },
     {
       "name": {
-        "ru": "Сохранность",
-        "en": "Persistence"
+        "ru": "Качество данных",
+        "en": "Data quality"
       },
-      "command": "docker compose down → up",
+      "command": "python -m app.data.quality",
       "result": {
-        "ru": "Новый контейнер, те же 5 заказов и версия 0001",
-        "en": "New container, same 5 orders and version 0001"
+        "ru": "0 нарушений во всех четырёх проверках",
+        "en": "0 violations in all four checks"
       },
       "status": "pass"
     },
@@ -135,34 +123,10 @@
         "ru": "Lock-файл",
         "en": "Lock file"
       },
-      "command": "uv lock --check",
+      "command": "UV_CACHE_DIR=/tmp/ai-data-analyst-uv-cache uv lock --check --offline",
       "result": {
-        "ru": "45 пакетов, lock соответствует pyproject.toml",
-        "en": "45 packages, the lock matches pyproject.toml"
-      },
-      "status": "pass"
-    },
-    {
-      "name": {
-        "ru": "Чистый клон",
-        "en": "Clean clone"
-      },
-      "command": "git clone → uv sync --locked → CI steps",
-      "result": {
-        "ru": "Коммит cc7d851 проходит все шаги CI с нуля",
-        "en": "Commit cc7d851 passes every CI step from scratch"
-      },
-      "status": "pass"
-    },
-    {
-      "name": {
-        "ru": "Workflow",
-        "en": "Workflow"
-      },
-      "command": "actionlint .github/workflows/ci.yml",
-      "result": {
-        "ru": "actionlint 1.7.12: ошибок нет",
-        "en": "actionlint 1.7.12: no issues"
+        "ru": "45 пакетов; новых зависимостей нет",
+        "en": "45 packages; no new dependencies"
       },
       "status": "pass"
     }
@@ -177,14 +141,6 @@
       "request": "GET /ready",
       "status": "200 OK",
       "body": "{\"status\":\"ready\",\"revision\":\"0001\"}"
-    },
-    {
-      "request": "GET /ready",
-      "status": "503 Service Unavailable",
-      "body": {
-        "ru": "{\"detail\":\"Database is not ready\"} — база остановлена",
-        "en": "{\"detail\":\"Database is not ready\"} — database stopped"
-      }
     },
     {
       "request": "POST /health",
@@ -208,22 +164,54 @@
   "remote_ci": {
     "status": "not_verified",
     "detail": {
-      "ru": "Коммиты 4448e55, d3a43a5 и c22f342 отправлены в main; коммиты этапа 02 ещё не отправлены. Результат Actions не подтверждён: репозиторий приватный, статус проверяет пользователь.",
-      "en": "Commits 4448e55, d3a43a5 and c22f342 were pushed to main; the Stage 02 commits are not pushed yet. The Actions result is not confirmed: the repository is private and the user checks its status."
+      "ru": "Этап 03 проверен локально в рабочем дереве поверх 1c24ce9. Коммит и push не выполнялись; удалённый GitHub Actions для этих изменений не запускался.",
+      "en": "Stage 03 was checked locally in the working tree based on 1c24ce9. No commit or push was performed; remote GitHub Actions was not run for these changes."
     }
   },
   "remaining": [
     {
-      "ru": "Отправить коммиты этапа 02 и подтвердить зелёное задание «Lint, types and tests» с PostgreSQL в Actions.",
-      "en": "Push the Stage 02 commits and confirm a green “Lint, types and tests” job with PostgreSQL in Actions."
+      "ru": "Этап 04: детерминированное аналитическое ядро — выручка, заказы, сравнения периодов и вклады категорий.",
+      "en": "Stage 04: deterministic analytics core — revenue, orders, period comparisons and category contributions."
     },
     {
-      "ru": "Самостоятельные задания: маршрут GET /version (этап 01) и столбец products.is_active миграцией 0002 (этап 02).",
-      "en": "Practice tasks: a GET /version route (Stage 01) and a products.is_active column via migration 0002 (Stage 02)."
+      "ru": "После отдельного commit/push подтвердить результат GitHub Actions; локальный прогон не заменяет удалённый CI.",
+      "en": "After a separate commit/push, confirm GitHub Actions; local checks do not replace remote CI."
     },
     {
-      "ru": "Этап 03: генерация датасета на ~20 000 заказов с аномалиями A01–A05, ground_truth.json и проверки качества данных.",
-      "en": "Stage 03: generate a ~20,000-order dataset with anomalies A01–A05, ground_truth.json and data quality checks."
+      "ru": "Данные синтетические; причинная связь аномалий и производительность приложения на реальных данных не подтверждены.",
+      "en": "Data is synthetic; causal relationships between anomalies and application performance on real data are not established."
     }
-  ]
+  ],
+  "dataset": {
+    "seed": 42,
+    "period": "2026-01-01/2026-09-30",
+    "rows": {
+      "customers": 640,
+      "products": 64,
+      "orders": 20000,
+      "order_items": 39871,
+      "refunds": 1760,
+      "inventory_snapshots": 17472
+    },
+    "anomalies": [
+      "A01",
+      "A02",
+      "A03",
+      "A04",
+      "A05"
+    ],
+    "manifest_sha256": "647f55892afe35a9d10de750542ccc77e7782e93a168587ea237c450cc9dadb7",
+    "quality_violations": 0,
+    "reproducible_files": 8
+  },
+  "pdf": {
+    "pages": {
+      "ru": 31,
+      "en": 31
+    },
+    "visual_review": {
+      "ru": "Все страницы обеих версий просмотрены; новые разделы и итоги дополнительно проверены крупно.",
+      "en": "Every page in both versions was reviewed; new sections and final results were also inspected at full size."
+    }
+  }
 }

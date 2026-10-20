@@ -346,7 +346,7 @@ def add_stage02(story, verification, counts):
                     tr("Чего база не проверяет", "What the database does not check"),
                     tr(
                         "Правила между таблицами: сумма возвратов не больше позиции, возврат "
-                        "только по оплаченному заказу. Их проверит контроль качества на этапе 03.",
+                        "только по оплаченному заказу. Их проверяет контроль качества этапа 03.",
                         "Cross-table rules: refunds not above the line total, refunds only for "
                         "paid orders. Stage 03 data quality checks cover them.",
                     ),
@@ -862,7 +862,7 @@ def add_stage02(story, verification, counts):
         Spacer(1, 10),
         simple_table(
             [
-                tr("Файл", "File"),
+                tr("Файл этапов 01–02", "Stage 01–02 file"),
                 tr("Тестов", "Tests"),
                 tr("Что проверяет", "What it checks"),
             ],
@@ -938,7 +938,7 @@ def add_stage02(story, verification, counts):
             "docker compose --profile test up --detach --wait db-test\n"
             "export TEST_DATABASE_URL=\\\n"
             "  'postgresql+psycopg://analyst:analyst_test@127.0.0.1:5437/industrialflow_test'\n"
-            "uv run pytest          # 60 passed\n"
+            "uv run pytest\n"
             "uv run pytest -m integration"
         ),
         Spacer(1, 8),
@@ -946,10 +946,10 @@ def add_stage02(story, verification, counts):
             tr(
                 "Адрес — только из TEST_DATABASE_URL и только база *_test: тесты сбрасывают "
                 "схему и не должны задеть базу разработки. Без адреса локально — skip "
-                "(26 passed, 34 skipped), в CI (CI=true) — ошибка.",
+                "интеграционных тестов, в CI (CI=true) — ошибка.",
                 "The address comes only from TEST_DATABASE_URL and only a *_test database: "
                 "tests reset the schema and must not touch the development database. "
-                "Without it: skip locally (26 passed, 34 skipped), failure on CI (CI=true).",
+                "Without it: integration tests skip locally and fail on CI (CI=true).",
             ),
             TEAL,
             TEAL_L,

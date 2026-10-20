@@ -35,7 +35,12 @@ from guide.layout import (
 )
 from guide.sources import app_facts, locked_dependencies, schema_counts
 from guide.story import build_story
-from guide.toc import CONTENTS, STAGE_01_SECTIONS, STAGE_02_SECTIONS
+from guide.toc import (
+    CONTENTS,
+    STAGE_01_SECTIONS,
+    STAGE_02_SECTIONS,
+    STAGE_03_SECTIONS,
+)
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
 from reportlab.lib.utils import simpleSplit
@@ -81,8 +86,8 @@ def cover_page(c, doc):
         left,
         PAGE_H - 180,
         tr(
-            f"Этапы 01–{STAGES_DONE:02d} · Каркас и база данных",
-            f"Stages 01–{STAGES_DONE:02d} · Foundation and database",
+            f"Этапы 01–{STAGES_DONE:02d} · API, база и данные",
+            f"Stages 01–{STAGES_DONE:02d} · API, database and data",
         ),
     )
     c.setFont("PT", 14)
@@ -91,10 +96,10 @@ def cover_page(c, doc):
     for line in simpleSplit(
         tr(
             "Наглядное руководство: окружение uv, API на FastAPI, PostgreSQL в Docker, "
-            "таблицы и правила целостности, миграции Alembic, SQL вручную, тесты и CI.",
+            "миграции Alembic, SQL, воспроизводимые данные, проверки качества, "
+            "тесты и CI.",
             "A visual guide: the uv environment, a FastAPI API, PostgreSQL in Docker, "
-            "tables and integrity rules, Alembic migrations, hand-written SQL, tests "
-            "and CI.",
+            "Alembic migrations, SQL, reproducible data, quality checks, tests and CI.",
         ),
         "PT",
         14,
@@ -183,10 +188,12 @@ def cover_page(c, doc):
         MARGIN + 80,
         318,
         tr(
-            f"этап 01 — разделы {STAGE_01_SECTIONS[0]}–{STAGE_01_SECTIONS[-1]}, "
-            f"этап 02 — разделы {STAGE_02_SECTIONS[0]}–{STAGE_02_SECTIONS[-1]}",
-            f"Stage 01 — sections {STAGE_01_SECTIONS[0]}–{STAGE_01_SECTIONS[-1]}, "
-            f"Stage 02 — sections {STAGE_02_SECTIONS[0]}–{STAGE_02_SECTIONS[-1]}",
+            f"01: {STAGE_01_SECTIONS[0]}–{STAGE_01_SECTIONS[-1]} · "
+            f"02: {STAGE_02_SECTIONS[0]}–{STAGE_02_SECTIONS[-1]} · "
+            f"03: {STAGE_03_SECTIONS[0]}–{STAGE_03_SECTIONS[-1]}",
+            f"01: {STAGE_01_SECTIONS[0]}–{STAGE_01_SECTIONS[-1]} · "
+            f"02: {STAGE_02_SECTIONS[0]}–{STAGE_02_SECTIONS[-1]} · "
+            f"03: {STAGE_03_SECTIONS[0]}–{STAGE_03_SECTIONS[-1]}",
         ),
     )
     c.setFont("PT", 9.3)
@@ -198,6 +205,8 @@ def cover_page(c, doc):
             c.setFillColor(HEX("#93C5FD"))
         elif number in STAGE_02_SECTIONS:
             c.setFillColor(HEX("#5EEAD4"))
+        elif number in STAGE_03_SECTIONS:
+            c.setFillColor(HEX("#C4B5FD"))
         else:
             c.setFillColor(HEX("#94A3B8"))
         c.drawString(MARGIN + column * 250, 300 - row * 14.5, f"{number}  {tr(ru, en)}")
@@ -220,10 +229,9 @@ def cover_page(c, doc):
         MARGIN,
         53,
         tr(
-            "Подробный текст — docs/STAGE_01.md, docs/STAGE_02.md; журнал и отчёт — "
-            "docs/DEVELOPMENT_LOG.md, docs/VERIFICATION.md",
-            "Detailed guides (Russian) — docs/STAGE_01.md, docs/STAGE_02.md; "
-            "instructions — docs/instructions/",
+            "Этапы: docs/STAGE_01.md–STAGE_03.md; отчёт: docs/VERIFICATION.md",
+            "Stage guides: docs/STAGE_01.md–STAGE_03.md; "
+            "instructions: docs/instructions/",
         ),
     )
     c.restoreState()
@@ -343,13 +351,13 @@ def build_guide(output, verification, lang):
             bottomMargin=17 * mm,
             title="AI Data Analyst - "
             + tr(
-                f"этапы 01–{STAGES_DONE:02d}: каркас и база данных",
-                f"stages 01–{STAGES_DONE:02d}: foundation and database",
+                f"этапы 01–{STAGES_DONE:02d}: API, база и данные",
+                f"stages 01–{STAGES_DONE:02d}: API, database and data",
             ),
             author="AI Data Analyst",
             subject=tr(
-                "uv, FastAPI, PostgreSQL, SQLAlchemy, Alembic, SQL, тесты и CI",
-                "uv, FastAPI, PostgreSQL, SQLAlchemy, Alembic, SQL, tests and CI",
+                "uv, FastAPI, PostgreSQL, SQL, данные, качество, тесты и CI",
+                "uv, FastAPI, PostgreSQL, SQL, data, quality, tests and CI",
             ),
             lang=lang,
         )

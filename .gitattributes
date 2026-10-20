@@ -1,0 +1,2 @@
+# Treat generated PDF guides as binary artifacts in diffs and merges.
+*.pdf binary

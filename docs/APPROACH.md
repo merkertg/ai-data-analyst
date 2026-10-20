@@ -8,9 +8,9 @@ The application answers such questions by running a short investigation: it sele
 
 The project uses fictional IndustrialFlow data generated with a fixed seed.
 
-## Current implementation: Stages 01–02
+## Current implementation: Stages 01–03
 
-The application has a runnable HTTP foundation, a PostgreSQL schema created by versioned migrations, and automated checks against a real database. There is no generated dataset and no analytics yet.
+The application has a runnable HTTP foundation, a PostgreSQL schema created by versioned migrations, reproducible generated data, an atomic loader and read-only cross-table quality checks. There is no analytics service or LLM agent yet.
 
 ```text
 HTTP client → Uvicorn → FastAPI
@@ -21,6 +21,9 @@ HTTP client → Uvicorn → FastAPI
 Alembic migrations → PostgreSQL 17: customers, products, orders,
                      order_items, refunds, inventory_snapshots
 Sample CLI (python -m app.db.sample) → small dataset with known answers
+Generator (python -m app.data.generate) → CSV + manifest + evaluation ground truth
+Loader (python -m app.data.load) → one transaction, empty domain tables only
+Quality CLI (python -m app.data.quality) → read-only cross-table checks
 sql/*.sql → hand-written queries, executed by integration tests
 
 Settings: environment variables → .env → defaults in app/config.py
@@ -50,7 +53,7 @@ Settings: environment variables → .env → defaults in app/config.py
 | Code checks | Ruff, mypy (strict, Pydantic plugin) | Lint, formatting, import order, static types |
 | CI | GitHub Actions with a PostgreSQL service | The same checks on every push to `main` and pull request |
 
-Planned additions: NumPy and Faker for demo data (Stage 03); Pandas and DuckDB for analytics (Stage 04); scikit-learn for anomaly detection (Stage 05); the OpenAI API for tool calling and structured outputs (Stage 07); Streamlit and Plotly (Stage 08); an application Docker image (Stage 10).
+The Stage 03 generator uses only standard-library `random.Random`, `csv`, `hashlib` and exact `Decimal` arithmetic; it needs no NumPy or Faker. Planned additions: Pandas and DuckDB for analytics (Stage 04); scikit-learn for anomaly detection (Stage 05); the OpenAI API for tool calling and structured outputs (Stage 07); Streamlit and Plotly (Stage 08); an application Docker image (Stage 10).
 
 ## Data model
 
@@ -69,7 +72,7 @@ customers 1 ──< orders 1 ──< order_items >── 1 products 1 ──< in
 | `refunds` | `order_item_id`, `amount NUMERIC(12,2)`, `processed_at` | `amount > 0` |
 | `inventory_snapshots` | `product_id`, `snapshot_date`, `quantity` | `quantity >= 0`, one snapshot per product per day |
 
-Deleting an order cascades to its lines; every other foreign key is `RESTRICT`, so customers with orders, sold products and refunded lines cannot be deleted. Constraint and index names follow a convention (`ck_`, `fk_`, `uq_`, `ix_` + table + columns). Rules spanning several tables — refunds not exceeding the line total, refunds only for paid orders — are left to Stage 03 data quality checks. Decisions are recorded in [ADR 0002](adr/0002-postgresql-schema-and-migrations.md).
+Deleting an order cascades to its lines; every other foreign key is `RESTRICT`, so customers with orders, sold products and refunded lines cannot be deleted. Constraint and index names follow a convention (`ck_`, `fk_`, `uq_`, `ix_` + table + columns). Rules spanning several tables — refunds not exceeding the line total, refunds only for paid orders — are verified by Stage 03 read-only data quality checks. Decisions are recorded in [ADR 0002](adr/0002-postgresql-schema-and-migrations.md).
 
 ## Key principles
 
@@ -94,7 +97,7 @@ Fixed before any data exists, so that every later stage uses the same rules:
 
 ## Verification and CI
 
-26 unit tests cover HTTP responses, the OpenAPI schema, settings and `DATABASE_URL` validation, readiness without a database, the lazy engine and the model structure. 34 integration tests run on a real PostgreSQL database whose name must end with `_test`: migrations up and down, `alembic check`, `/ready`, 20 invalid rows rejected by the expected named constraint, delete rules, exact `Decimal` round trips, time zones, and the four SQL files on the sample dataset. Ruff checks style and formats both Python files and Python code blocks in Markdown; mypy runs in strict mode over `app`, `tests` and `migrations`. GitHub Actions repeats all of this on `ubuntu-24.04` with a digest-pinned PostgreSQL service, SHA-pinned actions and read-only permissions. Recorded results are in [VERIFICATION.md](VERIFICATION.md); the workflow is explained in [CI_CD.md](CI_CD.md).
+Unit tests cover HTTP responses, settings, schema structure, deterministic data generation and bundle handling. Integration tests use a real PostgreSQL database whose name must end with `_test`: migrations, readiness, constraints, exact money and time round trips, SQL examples, data loading and cross-table quality rules. Tests use `TEST_DATABASE_URL` only and never the development `.env` address. Ruff checks style and formatting; mypy runs in strict mode over `app`, `tests` and `migrations`. GitHub Actions repeats the configured checks on `ubuntu-24.04` with a PostgreSQL service, SHA-pinned actions and read-only permissions. Actual counts, results and limits belong in [VERIFICATION.md](VERIFICATION.md); local results do not establish a successful remote run. The workflow is explained in [CI_CD.md](CI_CD.md).
 
 ## Decisions
 
@@ -102,6 +105,8 @@ Architecture decisions are recorded as ADRs in [adr/](adr/):
 
 - [ADR 0001: Application layout and tooling](adr/0001-application-layout-and-tooling.md) — `uv init --app --no-package`, `app/` at the root with pytest `pythonpath`, locked dependencies with a 14-day age policy, Ruff and strict mypy, `httpx2` for the test client.
 - [ADR 0002: PostgreSQL schema, integrity rules and migrations](adr/0002-postgresql-schema-and-migrations.md) — six normalised tables, integrity enforced by PostgreSQL, `NUMERIC`/`Decimal` money, `timestamptz` with Moscow reporting months, Alembic as the only way to build the schema, `/ready`.
+
+- [ADR 0003: Reproducible demo data and safe loading](adr/0003-reproducible-demo-data-and-safe-loading.md) — standard-library seeded generation, exact monetary serialization, manifest integrity, atomic loading and quality checks.
 
 ## Architecture
 
@@ -120,6 +125,14 @@ AI analyst agent: LLM, analysis plan, tool calling
 
 The interface talks only to the API. The agent can call only registered tools; each tool runs a predefined parameterised query or a Python calculation and returns structured results that the report cites.
 
+## Demonstration data and evaluation
+
+The default bundle contains 640 customers, 64 products, 20,000 orders and daily inventory snapshots across eight regions for January–September 2026. The generator uses a local seeded `random.Random` instance and deterministic `Decimal` calculations. It writes the six table CSV files, `manifest.json` and `ground_truth.json` to a new or empty directory. Identical parameters produce identical file bytes. The manifest describes the schema version, seed, row counts and file hashes. Bundle validation protects the loader from incomplete or changed inputs; the loader refuses to overwrite existing business data and imports all tables in a single transaction. Loading needs only the six CSV files and the manifest; it never reads the evaluation answer key.
+
+The five injected scenarios are valid business events, not deliberately invalid rows: reduced paid pump quantities in September (A01), 35% discounts on paid valve lines in the South in August (A02), additional refunds of 30% of rounded compressor line amounts in July (A03), zero snapshots for one pump on 10–19 September (A04), and one unusually large paid sensor line of 500 units in June (A05). A01 and A04 coexist in the dataset; this does not prove a causal stockout explanation for the sales drop.
+
+`ground_truth.json` records baseline and observed deterministic evidence for evaluation. It is not a runtime input for the future LLM agent. Read-only data quality checks detect orders without lines, aggregate refunds above a rounded discounted line amount, refunds on unpaid orders and refunds processed before payment. A successful quality check establishes these rules only; it does not mean that sales behaviour is statistically ordinary.
+
 ## Next steps
 
-Stage 03 generates the demonstration dataset: about 20,000 orders from January to September 2026, 500–1,000 customers, 50–100 products and 8 sales regions, with injected scenarios A01–A05 recorded in a `ground_truth.json` that the agent never reads. A seeded generator makes the dataset reproducible, and data quality checks cover the rules that a single-row `CHECK` cannot express.
+Stage 04 implements the deterministic analytics core over the generated database: paid sales, processed refunds, net revenue, paid order counts, average order value, month comparisons and category or regional contributions. The metric definitions above remain the shared contract. Anomaly detection and the LLM agent follow in later stages.

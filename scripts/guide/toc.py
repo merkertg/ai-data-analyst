@@ -27,6 +27,9 @@ CONTENTS = [
     ("/health и /ready", "/health and /ready"),
     ("SQL вручную", "Hand-written SQL"),
     ("Тесты с базой", "Database tests"),
+    ("Воспроизводимые данные", "Reproducible data"),
+    ("Сценарии A01–A05", "Scenarios A01–A05"),
+    ("Загрузка и качество", "Loading and quality"),
     ("CI на GitHub Actions", "CI on GitHub Actions"),
     ("Шпаргалка команд", "Command cheat sheet"),
     ("Типичные ошибки", "Common errors"),
@@ -37,6 +40,7 @@ CONTENTS = [
 # Разделы этапов: на обложке оглавление помечает, к какому этапу они относятся.
 STAGE_01_SECTIONS = range(2, 12)
 STAGE_02_SECTIONS = range(12, 21)
+STAGE_03_SECTIONS = range(21, 24)
 
 
 def title(number: int) -> str:
