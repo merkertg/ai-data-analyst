@@ -1461,7 +1461,15 @@ def build_story(verification, dependencies, lock_packages):
                 ],
                 [mono(".gitignore"), "Что Git не отслеживает: .venv, кеши, .env."],
                 [mono(".github/workflows/ci.yml"), "Проверки в GitHub Actions."],
-                [mono("docs/"), "Руководство этапа, журнал, отчёт, ADR, этот PDF."],
+                [
+                    mono("docs/instructions/"),
+                    "Короткие английские инструкции: запуск, API, проверки, CI, "
+                    "структура.",
+                ],
+                [
+                    mono("docs/"),
+                    "Руководство этапа, CI/CD, подход и ADR, журнал, отчёт, этот PDF.",
+                ],
                 [mono("scripts/build_guide.py"), "Сборка этого PDF."],
                 [mono("AGENTS.md"), "Правила работы над проектом."],
             ],
@@ -1933,17 +1941,22 @@ def build_story(verification, dependencies, lock_packages):
         ),
         p("Публикация", H2),
         p(
-            "1. На github.com: <b>New repository</b>, имя ai-data-analyst, "
-            "<b>без</b> README, .gitignore и лицензии — иначе история на GitHub "
-            "разойдётся с локальной.",
+            "Репозиторий создан: <b>merkertg/ai-data-analyst</b>, оба коммита "
+            "этапа отправлены в main. Для нового проекта порядок такой.",
+            BODY_S,
+        ),
+        Spacer(1, 4),
+        p(
+            "1. На github.com: <b>New repository</b> <b>без</b> README, "
+            ".gitignore и лицензии — иначе история на GitHub разойдётся "
+            "с локальной.",
             BODY_S,
         ),
         Spacer(1, 4),
         p("2. Подключить удалённый репозиторий и отправить ветку:", BODY_S),
         Spacer(1, 4),
         code_block(
-            "git remote add origin "
-            "https://github.com/<твой-логин>/ai-data-analyst.git\n"
+            "git remote add origin git@github.com:<логин>/<репозиторий>.git\n"
             "git push -u origin main"
         ),
         Spacer(1, 6),

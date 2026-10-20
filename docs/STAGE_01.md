@@ -5,7 +5,12 @@
 Команды выполняются в Terminal из папки `ai-data-analyst`, если не сказано иное.
 
 Наглядная версия этого материала со схемами — в
-[PDF-руководстве](guide/ai-data-analyst-guide.pdf).
+[PDF-руководстве](guide/ai-data-analyst-guide.pdf). Короткие английские
+инструкции без объяснений — в [docs/instructions/](instructions/):
+[быстрый запуск](instructions/quickstart.md),
+[API](instructions/usage.md), [проверки](instructions/testing.md),
+[CI](instructions/ci-and-delivery.md),
+[структура проекта](instructions/project-structure.md).
 
 Быстрые переходы: [запуск](#3-как-запустить-на-mac) ·
 [uv и зависимости](#4-окружение-и-зависимости-uv) ·
@@ -53,7 +58,15 @@ ai-data-analyst/
 │   ├── test_config.py        # откуда берутся настройки
 │   ├── test_health.py        # HTTP-ответы и OpenAPI-схема
 │   └── test_version.py       # версия в коде = версия в pyproject.toml
-├── docs/                     # руководства, журнал, отчёт, ADR, PDF
+├── docs/
+│   ├── instructions/         # короткие инструкции: запуск, API, проверки, CI
+│   ├── STAGE_01.md           # это руководство
+│   ├── CI_CD.md              # подробно о GitHub Actions
+│   ├── APPROACH.md           # задача, принципы, архитектура (англ.)
+│   ├── adr/                  # записи архитектурных решений (англ.)
+│   ├── DEVELOPMENT_LOG.md    # журнал: что сделано и как проверено
+│   ├── VERIFICATION.md       # отчёт о фактических проверках
+│   └── guide/                # PDF-руководство и данные для него
 ├── scripts/build_guide.py    # сборка PDF-руководства
 ├── .github/workflows/ci.yml  # GitHub Actions
 ├── .env.example              # образец локальных настроек (в Git)
@@ -547,8 +560,12 @@ GitHub при каждом изменении. Он защищает от сит
    другой код, а SHA коммита изменить нельзя. Комментарий с версией — для людей.
 
 Workflow проверен локально линтером `actionlint 1.7.12` — ошибок нет.
-Те же команды прошли в чистом клоне коммита `4448e55`. Настоящий запуск на
-GitHub ещё не выполнялся: репозиторий пока не создан.
+Те же команды прошли в чистом клоне коммитов `4448e55` и `d3a43a5`.
+Оба коммита отправлены на GitHub; результат задания в Actions записывается
+в [отчёт о проверке](VERIFICATION.md) после подтверждения.
+
+Подробно о событиях, шагах, правах и разборе красного pipeline —
+в [руководстве CI/CD](CI_CD.md).
 
 ## 12. Git и GitHub
 
@@ -562,18 +579,23 @@ GitHub ещё не выполнялся: репозиторий пока не с
 
 ### Как опубликовать на GitHub
 
-1. На github.com нажми **New repository**, имя `ai-data-analyst`, **без**
-   README, `.gitignore` и лицензии — иначе история на GitHub разойдётся
-   с локальной.
+Репозиторий создан: [merkertg/ai-data-analyst](https://github.com/merkertg/ai-data-analyst),
+удалённый адрес `origin` — `git@github.com:merkertg/ai-data-analyst.git` (SSH).
+Для нового проекта порядок такой:
+
+1. На github.com нажми **New repository** **без** README, `.gitignore`
+   и лицензии — иначе история на GitHub разойдётся с локальной.
 2. Подключи удалённый репозиторий и отправь ветку:
 
 ```bash
-git remote add origin https://github.com/<твой-логин>/ai-data-analyst.git
+git remote add origin git@github.com:<логин>/<репозиторий>.git
 git push -u origin main
 ```
 
 3. Открой вкладку **Actions**: задание **Lint, types and tests** должно стать
    зелёным. Только после этого CI можно считать подтверждённым.
+
+Дальше каждое изменение отправляется командой `git push origin main`.
 
 ## 13. Типичные ошибки
 
