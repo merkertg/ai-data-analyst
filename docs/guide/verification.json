@@ -1,72 +1,169 @@
 {
   "checked_at": "2026-10-20",
-  "base_commit": "4448e55",
-  "stage": 1,
+  "base_commit": "cc7d851",
+  "stage": 2,
   "environment": {
-    "os": "macOS, Apple Silicon",
+    "os": {
+      "ru": "macOS, Apple Silicon",
+      "en": "macOS, Apple Silicon"
+    },
     "uv": "0.12.23",
-    "python": "3.12.15"
+    "python": "3.12.15",
+    "docker": "29.8.2",
+    "postgres": "17"
   },
   "tests": {
-    "total": 7,
-    "passed": 7,
+    "total": 60,
+    "unit": 26,
+    "integration": 34,
+    "passed": 60,
     "failed": 0,
     "skipped": 0,
-    "seconds": 0.27
+    "seconds": 1.19
   },
   "checks": [
     {
-      "name": "Тесты",
-      "command": "uv run pytest",
-      "result": "7 passed, 0 failed, 0 skipped",
+      "name": {
+        "ru": "Тесты",
+        "en": "Tests"
+      },
+      "command": "TEST_DATABASE_URL=... uv run pytest",
+      "result": {
+        "ru": "60 passed: 26 unit + 34 integration",
+        "en": "60 passed: 26 unit + 34 integration"
+      },
       "status": "pass"
     },
     {
-      "name": "Линтер",
+      "name": {
+        "ru": "Строгий CI",
+        "en": "Strict CI"
+      },
+      "command": "CI=true uv run pytest  # no TEST_DATABASE_URL",
+      "result": {
+        "ru": "Интеграционные тесты падают, а не пропускаются",
+        "en": "Integration tests fail instead of being skipped"
+      },
+      "status": "pass"
+    },
+    {
+      "name": {
+        "ru": "Линтер",
+        "en": "Lint"
+      },
       "command": "uv run ruff check .",
-      "result": "All checks passed",
+      "result": {
+        "ru": "All checks passed",
+        "en": "All checks passed"
+      },
       "status": "pass"
     },
     {
-      "name": "Формат",
+      "name": {
+        "ru": "Формат",
+        "en": "Format"
+      },
       "command": "uv run ruff format --check .",
-      "result": "Все файлы отформатированы, включая Python-блоки в Markdown",
+      "result": {
+        "ru": "Все файлы, включая Python-блоки в Markdown",
+        "en": "All files, including Python blocks in Markdown"
+      },
       "status": "pass"
     },
     {
-      "name": "Типы",
-      "command": "uv run mypy app tests",
-      "result": "Success: no issues found in 6 source files",
+      "name": {
+        "ru": "Типы",
+        "en": "Types"
+      },
+      "command": "uv run mypy app tests migrations",
+      "result": {
+        "ru": "Success: no issues found in 22 source files",
+        "en": "Success: no issues found in 22 source files"
+      },
       "status": "pass"
     },
     {
-      "name": "Lock-файл",
+      "name": {
+        "ru": "Миграции",
+        "en": "Migrations"
+      },
+      "command": "alembic upgrade head · check · downgrade base",
+      "result": {
+        "ru": "Все успешны; No new upgrade operations detected.",
+        "en": "All succeed; No new upgrade operations detected."
+      },
+      "status": "pass"
+    },
+    {
+      "name": {
+        "ru": "SQL-запросы",
+        "en": "SQL queries"
+      },
+      "command": "psql < sql/*.sql",
+      "result": {
+        "ru": "309 000.00 и 17 500.00 по месяцам; 338 000.00 против 328 000.00",
+        "en": "309,000.00 and 17,500.00 by month; 338,000.00 vs 328,000.00"
+      },
+      "status": "pass"
+    },
+    {
+      "name": {
+        "ru": "Готовность",
+        "en": "Readiness"
+      },
+      "command": "uvicorn + curl /ready, docker compose stop/start db",
+      "result": {
+        "ru": "200 → 503 при остановленной базе → снова 200",
+        "en": "200 → 503 with the database stopped → 200 again"
+      },
+      "status": "pass"
+    },
+    {
+      "name": {
+        "ru": "Сохранность",
+        "en": "Persistence"
+      },
+      "command": "docker compose down → up",
+      "result": {
+        "ru": "Новый контейнер, те же 5 заказов и версия 0001",
+        "en": "New container, same 5 orders and version 0001"
+      },
+      "status": "pass"
+    },
+    {
+      "name": {
+        "ru": "Lock-файл",
+        "en": "Lock file"
+      },
       "command": "uv lock --check",
-      "result": "uv.lock соответствует pyproject.toml",
+      "result": {
+        "ru": "45 пакетов, lock соответствует pyproject.toml",
+        "en": "45 packages, the lock matches pyproject.toml"
+      },
       "status": "pass"
     },
     {
-      "name": "Чистый клон",
-      "command": "git clone → uv sync --locked → все проверки",
-      "result": "Коммиты 4448e55 и d3a43a5 собираются и проходят проверки с нуля",
+      "name": {
+        "ru": "Чистый клон",
+        "en": "Clean clone"
+      },
+      "command": "git clone → uv sync --locked → CI steps",
+      "result": {
+        "ru": "Коммит cc7d851 проходит все шаги CI с нуля",
+        "en": "Commit cc7d851 passes every CI step from scratch"
+      },
       "status": "pass"
     },
     {
-      "name": "Workflow",
+      "name": {
+        "ru": "Workflow",
+        "en": "Workflow"
+      },
       "command": "actionlint .github/workflows/ci.yml",
-      "result": "actionlint 1.7.12: ошибок нет",
-      "status": "pass"
-    },
-    {
-      "name": "Возраст пакетов",
-      "command": "даты upload-time в uv.lock",
-      "result": "38 пакетов; самый новый — websockets 17.2 от 2026-10-03",
-      "status": "pass"
-    },
-    {
-      "name": "Сервер",
-      "command": "uv run uvicorn app.main:app + curl",
-      "result": "Uvicorn запустился; ответы ниже в таблице HTTP",
+      "result": {
+        "ru": "actionlint 1.7.12: ошибок нет",
+        "en": "actionlint 1.7.12: no issues"
+      },
       "status": "pass"
     }
   ],
@@ -75,6 +172,19 @@
       "request": "GET /health",
       "status": "200 OK",
       "body": "{\"status\":\"ok\"}"
+    },
+    {
+      "request": "GET /ready",
+      "status": "200 OK",
+      "body": "{\"status\":\"ready\",\"revision\":\"0001\"}"
+    },
+    {
+      "request": "GET /ready",
+      "status": "503 Service Unavailable",
+      "body": {
+        "ru": "{\"detail\":\"Database is not ready\"} — база остановлена",
+        "en": "{\"detail\":\"Database is not ready\"} — database stopped"
+      }
     },
     {
       "request": "POST /health",
@@ -89,16 +199,31 @@
     {
       "request": "GET /docs",
       "status": "200 OK",
-      "body": "HTML-страница Swagger UI"
+      "body": {
+        "ru": "HTML-страница Swagger UI",
+        "en": "Swagger UI HTML page"
+      }
     }
   ],
   "remote_ci": {
     "status": "not_verified",
-    "detail": "Репозиторий merkertg/ai-data-analyst создан, коммиты 4448e55 и d3a43a5 отправлены в main. Результат задания в Actions ещё не подтверждён: репозиторий приватный, статус проверяет пользователь."
+    "detail": {
+      "ru": "Коммиты 4448e55, d3a43a5 и c22f342 отправлены в main; коммиты этапа 02 ещё не отправлены. Результат Actions не подтверждён: репозиторий приватный, статус проверяет пользователь.",
+      "en": "Commits 4448e55, d3a43a5 and c22f342 were pushed to main; the Stage 02 commits are not pushed yet. The Actions result is not confirmed: the repository is private and the user checks its status."
+    }
   },
   "remaining": [
-    "Подтвердить во вкладке Actions зелёное задание «Lint, types and tests» для коммитов этапа и записать результат в отчёт и PDF.",
-    "Выполнить самостоятельное задание: маршрут GET /version с моделью VersionResponse и тестом.",
-    "Этап 02: PostgreSQL в Docker Compose, модели SQLAlchemy 2 и первая миграция Alembic."
+    {
+      "ru": "Отправить коммиты этапа 02 и подтвердить зелёное задание «Lint, types and tests» с PostgreSQL в Actions.",
+      "en": "Push the Stage 02 commits and confirm a green “Lint, types and tests” job with PostgreSQL in Actions."
+    },
+    {
+      "ru": "Самостоятельные задания: маршрут GET /version (этап 01) и столбец products.is_active миграцией 0002 (этап 02).",
+      "en": "Practice tasks: a GET /version route (Stage 01) and a products.is_active column via migration 0002 (Stage 02)."
+    },
+    {
+      "ru": "Этап 03: генерация датасета на ~20 000 заказов с аномалиями A01–A05, ground_truth.json и проверки качества данных.",
+      "en": "Stage 03: generate a ~20,000-order dataset with anomalies A01–A05, ground_truth.json and data quality checks."
+    }
   ]
 }

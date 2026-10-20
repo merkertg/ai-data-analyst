@@ -433,6 +433,11 @@ Docstring модели тоже попадает в схему как `descripti
 ключ OpenAI, режим работы различаются на ноутбуке, в CI и на сервере, а код
 везде один.
 
+> **Изменено на этапе 02.** Глобальный объект `settings = Settings()` заменён
+> функцией `get_settings()` с кешем, а в настройки добавлен `database_url`.
+> Ниже описан код этапа 01; что изменилось и почему — в
+> [руководстве этапа 02](STAGE_02.md) и в текущем `app/config.py`.
+
 ```python
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -657,7 +662,7 @@ git push -u origin main
 Требования:
 
 - ответ описан Pydantic-моделью `VersionResponse`;
-- `name` берётся из `settings.app_name`, `version` — из `app.__version__`;
+- `name` берётся из `get_settings().app_name` (на этапе 01 — `settings.app_name`), `version` — из `app.__version__`;
 - есть тест на код `200` и тело ответа;
 - `uv run pytest`, `ruff check`, `ruff format --check` и `mypy` проходят.
 

@@ -2,7 +2,7 @@
 
 [← README](../../README.md) · [All documentation](../../README.md#documentation)
 
-Lint, formatting, type checks, tests and the lock file. The same commands run in [GitHub Actions](ci-and-delivery.md).
+Lint, formatting, type checks, migrations, unit and integration tests, and the lock file. The same commands run in [GitHub Actions](ci-and-delivery.md).
 
 ## Verify
 
@@ -10,39 +10,67 @@ Lint, formatting, type checks, tests and the lock file. The same commands run in
 uv sync --locked
 uv run --locked ruff check .
 uv run --locked ruff format --check .
-uv run --locked mypy app tests
+uv run --locked mypy app tests migrations
+docker compose --profile test up --detach --wait db-test
+export TEST_DATABASE_URL='postgresql+psycopg://analyst:analyst_test@127.0.0.1:5437/industrialflow_test'
 uv run --locked pytest -v
 ```
 
-Expected results after Stage 01:
+Expected results after Stage 02:
 
 | Command | Result |
 | --- | --- |
 | `ruff check .` | `All checks passed!` |
 | `ruff format --check .` | `... files already formatted` |
-| `mypy app tests` | `Success: no issues found in 6 source files` |
-| `pytest -v` | `7 passed` |
+| `mypy app tests migrations` | `Success: no issues found in 22 source files` |
+| `pytest -v` with `TEST_DATABASE_URL` | `60 passed` |
+| `pytest -v` without `TEST_DATABASE_URL` | `26 passed, 34 skipped` |
 
 `ruff format` also checks Python code blocks inside Markdown files, so code examples in the documentation must be formatted too. Fix formatting with `uv run --locked ruff format .` and safe lint issues with `uv run --locked ruff check --fix .`.
 
-## What the tests cover
+## Unit and integration tests
+
+| Group | Location | Needs a database | Count |
+| --- | --- | --- | --- |
+| Unit | `tests/*.py` | No | 26 |
+| Integration | `tests/integration/` (marker `integration`) | Yes, from `TEST_DATABASE_URL` | 34 |
+
+Integration tests drop and recreate the schema, so they only run against a database whose name ends with `_test`, and only from `TEST_DATABASE_URL` — never from `DATABASE_URL` or `.env`. Locally, without the variable they are skipped; on GitHub Actions (`CI=true`) a missing variable is a failure.
+
+Fixtures: `migrated_engine` builds the schema once per run with `alembic downgrade base` → `upgrade head`; `db_session` runs each test inside a transaction that is rolled back afterwards, so tests never see each other's rows.
 
 | File | Checks |
 | --- | --- |
-| `tests/test_health.py` | `GET /health` returns `200` and exactly `{"status": "ok"}`; `POST /health` returns `405`; the OpenAPI schema has the version, the path and the required `status` field |
-| `tests/test_config.py` | Default `app_name`; `.env` overrides the default; an environment variable overrides `.env` |
-| `tests/test_version.py` | `app.__version__` matches `version` in `pyproject.toml` |
-
-Tests call the application through FastAPI's `TestClient` (on `httpx2`): no network, no running server and no free port are needed.
+| `tests/test_health.py` | `/health`, `405` on `POST`, OpenAPI version and model |
+| `tests/test_config.py` | Settings priority; `DATABASE_URL` driver and database validation; password hidden from errors and `repr` |
+| `tests/test_ready.py` | `/ready` answers `503` without a database or with an unreachable one; `/health` does not need a database |
+| `tests/test_session.py` | Lazy engine, `DatabaseNotConfigured`, disposing an unused pool |
+| `tests/test_models.py` | Six tables, `NUMERIC(12, 2)` money, delete rules, named constraints, `OrderStatus` vs `CHECK` |
+| `tests/test_version.py` | `app.__version__` matches `pyproject.toml` |
+| `tests/integration/test_migrations.py` | Upgrade, downgrade round trip, `alembic check`, `/ready` on a real database |
+| `tests/integration/test_constraints.py` | 20 invalid rows rejected by the named constraint, cascade delete, exact `Decimal`, `timestamptz` |
+| `tests/integration/test_queries.py` | The four files in `sql/` return hand-computed results on the sample data |
 
 Useful options:
 
 ```bash
-uv run --locked pytest -k config
+uv run --locked pytest -m integration
+uv run --locked pytest -m "not integration"
 uv run --locked pytest -x
 ```
 
-`-k config` runs tests whose names contain `config`; `-x` stops at the first failure.
+`-m` selects tests by marker; `-x` stops at the first failure. Stop the test database with `docker compose --profile test stop db-test`; its data lives in memory and disappears.
+
+## Migrations
+
+```bash
+uv run --locked alembic upgrade head
+uv run --locked alembic check
+uv run --locked alembic downgrade base
+uv run --locked alembic upgrade head
+```
+
+`alembic check` prints `No new upgrade operations detected.` when models and migrations match. Run these against the test database by exporting `DATABASE_URL` with the same value as `TEST_DATABASE_URL`, as CI does.
 
 ## Lock file and dependency age
 
@@ -53,8 +81,6 @@ uv lock --check
 The command fails if `uv.lock` does not match `pyproject.toml`; run `uv lock` and commit the updated file. The `[tool.uv] exclude-newer` date in `pyproject.toml` keeps `uv lock` from selecting PyPI releases published less than 14 days before it.
 
 ## Workflow file
-
-The CI workflow can be linted locally with actionlint:
 
 ```bash
 uvx --from actionlint-py actionlint .github/workflows/ci.yml

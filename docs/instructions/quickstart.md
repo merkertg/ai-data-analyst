@@ -2,12 +2,13 @@
 
 [← README](../../README.md) · [All documentation](../../README.md#documentation)
 
-Install uv, prepare the environment, start the API and optionally override settings with a local `.env` file. A detailed walkthrough in Russian is in the [Stage 01 guide](../STAGE_01.md).
+Install uv, start PostgreSQL, apply migrations, start the API and check that it is ready. Detailed walkthroughs in Russian are in the [Stage 01](../STAGE_01.md) and [Stage 02](../STAGE_02.md) guides.
 
 ## Requirements
 
 - [uv](https://docs.astral.sh/uv/getting-started/installation/) 0.12 or newer. The project and CI use uv 0.12.23.
 - Python 3.12. You do not need to install it yourself: uv downloads it if it is missing.
+- Docker with the `docker compose` command (Docker Desktop on macOS) for PostgreSQL 17.
 - Git, to clone the repository.
 
 Run all commands from the project root, the directory containing `pyproject.toml`.
@@ -17,10 +18,11 @@ Run all commands from the project root, the directory containing `pyproject.toml
 | | macOS (Apple Silicon) | Linux |
 | --- | --- | --- |
 | Python on the host | `uv sync --locked`, Python 3.12 | same |
-| Verified by | Local run: tests, Ruff, mypy, Uvicorn, curl | GitHub Actions on `ubuntu-24.04` |
+| PostgreSQL | Docker Desktop | Docker Engine or Desktop |
+| Verified by | Local run: tests, Ruff, mypy, Uvicorn, curl, Compose | GitHub Actions on `ubuntu-24.04` with a PostgreSQL service |
 | Shell for the guides | zsh or Bash | Bash |
 
-Windows is not checked yet. Docker Compose arrives in Stage 02 together with PostgreSQL.
+Windows is not checked yet.
 
 ## Install uv
 
@@ -40,15 +42,30 @@ uv --version
 
 ```bash
 uv sync --locked
-uv run --locked python --version
+cp .env.example .env
 ```
 
-`uv sync --locked` creates `.venv` with the exact versions from `uv.lock` and fails if the lock file does not match `pyproject.toml`. The second command must print `Python 3.12.x`. Always run project commands through `uv run`: the system `python3` may be a different version.
+`uv sync --locked` creates `.venv` with the exact versions from `uv.lock` and fails if the lock file does not match `pyproject.toml`. `.env` holds local settings, including the database password and `DATABASE_URL`; it is ignored by Git. Always run project commands through `uv run`: the system `python3` may be a different version.
+
+## Start PostgreSQL and apply migrations
+
+```bash
+docker compose up --detach --wait db
+uv run alembic upgrade head
+```
+
+Optionally load the small sample dataset:
+
+```bash
+uv run python -m app.db.sample
+```
+
+See [Database](database.md) for psql, SQL examples and schema changes.
 
 ## Start the API
 
 ```bash
-uv run --locked uvicorn app.main:app --reload
+uv run uvicorn app.main:app --reload
 ```
 
 Expected output:
@@ -58,32 +75,26 @@ INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
 INFO:     Application startup complete.
 ```
 
-`--reload` restarts the server when a `.py` file changes. Keep this terminal open and use a second tab for other commands. Check the service:
+`--reload` restarts the server when a `.py` file changes. Keep this terminal open and use a second tab for other commands:
 
 ```bash
 curl http://127.0.0.1:8000/health
+curl http://127.0.0.1:8000/ready
 ```
 
-The response is `{"status":"ok"}`. Interactive documentation: <http://127.0.0.1:8000/docs>. Stop the server with `Ctrl+C`.
+`/health` returns `{"status":"ok"}` — the process is up. `/ready` returns `{"status":"ready","revision":"0001"}` — the database is reachable and migrated; otherwise it answers `503`. Interactive documentation: <http://127.0.0.1:8000/docs>. Stop the server with `Ctrl+C`, and PostgreSQL with `docker compose stop`.
 
 If port 8000 is busy, choose another one: `--port 8001`.
 
 ## Local settings
 
-Settings are read from environment variables, then from `.env`, then from defaults in `app/config.py`. To keep local values, copy the template:
-
-```bash
-cp .env.example .env
-```
-
-`.env` is ignored by Git. Settings are read at startup, so restart the server after changing `.env`.
+Settings are read from environment variables, then from `.env`, then from defaults in `app/config.py`. Settings are read at startup, so restart the server after changing `.env`.
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
 | `APP_NAME` | `AI Data Analyst` | Service title in OpenAPI and on `/docs` |
+| `DATABASE_URL` | not set | PostgreSQL address for the API and Alembic; must start with `postgresql+psycopg://` |
+| `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `POSTGRES_PORT` | see `.env.example` | Used by Docker Compose to create the `db` service |
+| `POSTGRES_TEST_PORT` | `5437` | Host port of the `db-test` service |
 
-A one-off override without `.env`:
-
-```bash
-APP_NAME="IndustrialFlow Analytics" uv run --locked uvicorn app.main:app
-```
+Without `DATABASE_URL` the API still starts: `/health` works and `/ready` answers `503`.

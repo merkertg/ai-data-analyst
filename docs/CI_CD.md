@@ -4,9 +4,10 @@
 как устроены проверки и что делать, если они не прошли. Краткая английская
 версия — [CI and delivery](instructions/ci-and-delivery.md).
 
-**Текущая цель (этап 01):** после каждого push в `main` и каждого pull
+**Текущая цель (этапы 01–02):** после каждого push в `main` и каждого pull
 request в `main` повторить на чистой Linux-машине те же проверки, что
-выполняются локально: lock-файл, Ruff, mypy и pytest.
+выполняются локально: lock-файл, Ruff, mypy, миграции Alembic и pytest —
+вместе с интеграционными тестами на настоящей PostgreSQL.
 
 На этом этапе есть только **CI** — автоматическая проверка. **CD** —
 сборка Docker-образа и его публикация — появится на этапе 10, когда будет
@@ -14,10 +15,11 @@ request в `main` повторить на чистой Linux-машине те �
 
 ## Подтверждённый запуск
 
-Запуск GitHub Actions пока **не подтверждён**. Коммиты `4448e55` и `d3a43a5`
-отправлены в `main` репозитория `merkertg/ai-data-analyst`; результат
-задания будет записан сюда и в [VERIFICATION.md](VERIFICATION.md) после
-проверки во вкладке Actions.
+Запуск GitHub Actions пока **не подтверждён**. Коммиты этапа 01 (`4448e55`,
+`d3a43a5`) и перестройка документации (`c22f342`) отправлены в `main`
+репозитория `merkertg/ai-data-analyst`; коммит этапа 02 добавит в задание
+PostgreSQL. Результат будет записан сюда и в [VERIFICATION.md](VERIFICATION.md)
+после проверки во вкладке Actions.
 
 Локальные проверки и actionlint не подтверждают удалённый запуск: это разные
 машины, и только GitHub показывает фактический результат.
@@ -68,13 +70,17 @@ Ruff проверяет и Python-блоки в Markdown.
 push в main / pull request в main / ручной запуск
                        ↓
 задание checks — «Lint, types and tests» (ubuntu-24.04, не дольше 10 минут)
-  1. Checkout repository           — код ровно того коммита, который проверяется
-  2. Install uv                    — uv 0.12.23 и Python 3.12, кеш по uv.lock
-  3. Install locked dependencies   — uv sync --locked
-  4. Ruff lint                     — uv run --locked ruff check .
-  5. Ruff format                   — uv run --locked ruff format --check .
-  6. Mypy                          — uv run --locked mypy app tests
-  7. Pytest                        — uv run --locked pytest
+  сервис: PostgreSQL 17 (тот же digest, что в compose.yaml), база industrialflow_test
+   1. Checkout repository            — код ровно того коммита, который проверяется
+   2. Install uv                     — uv 0.12.23 и Python 3.12, кеш по uv.lock
+   3. Install locked dependencies    — uv sync --locked
+   4. Ruff lint                      — uv run --locked ruff check .
+   5. Ruff format                    — uv run --locked ruff format --check .
+   6. Mypy                           — uv run --locked mypy app tests migrations
+   7. Apply migrations               — alembic upgrade head
+   8. Check models match migrations  — alembic check
+   9. Check downgrade and upgrade    — alembic downgrade base, затем upgrade head
+  10. Pytest                         — uv run --locked pytest (unit + интеграционные)
 ```
 
 Шаги выполняются по порядку. Если шаг завершился ошибкой, следующие
@@ -85,9 +91,39 @@ push в main / pull request в main / ручной запуск
 зависимости, но забыл закоммитить обновлённый lock, CI упадёт здесь,
 а не позже с непонятной ошибкой.
 
-**Шаги 4–7** — те же команды, что в [инструкции тестирования](instructions/testing.md).
+**Шаги 4–6 и 10** — те же команды, что в [инструкции тестирования](instructions/testing.md).
 Флаг `--locked` у `uv run` ещё раз гарантирует, что окружение не будет
 незаметно пересобрано с другими версиями.
+
+**Шаги 7–9** проверяют миграции на пустой базе: схема создаётся только
+Alembic, модели совпадают с миграциями (`alembic check` упадёт, если модель
+изменили без новой миграции), а откат до пустой базы и повторное применение
+работают. Подробно о миграциях — в [руководстве этапа 02](STAGE_02.md).
+
+### Сервис PostgreSQL
+
+```yaml
+services:
+  postgres:
+    image: postgres:17@sha256:2d2b8998d31037bf721cfdf764d76ba74171b4fab3431b7f72c27c56ddbdf9e3
+    env:
+      POSTGRES_DB: industrialflow_test
+    ports:
+      - 5432:5432
+    options: >-
+      --health-cmd "pg_isready -h 127.0.0.1 -U analyst -d industrialflow_test"
+```
+
+GitHub запускает рядом с заданием отдельный контейнер PostgreSQL и ждёт,
+пока healthcheck сообщит о готовности, — только потом начинаются шаги.
+Контейнер существует только на время запуска. Переменные задания
+`DATABASE_URL` (для Alembic) и `TEST_DATABASE_URL` (для тестов) указывают
+на эту базу. Пароль `analyst_ci` относится к одноразовому контейнеру
+и ничего не защищает.
+
+GitHub сам задаёт `CI=true`. В этом режиме интеграционные тесты без
+`TEST_DATABASE_URL` **падают**, а не пропускаются: забытая настройка не даст
+зелёный результат без проверки базы.
 
 ## 4. Зачем нужны `permissions`, `concurrency` и `timeout-minutes`
 
@@ -111,8 +147,8 @@ concurrency:
 она отменяется. Запуски для `main` не отменяются: каждый коммит в основной
 ветке должен получить свой результат.
 
-`timeout-minutes: 10` — защита от зависшего шага. Проверки этапа 01
-короткие (pytest локально — меньше секунды), а без ограничения зависшее
+`timeout-minutes: 10` — защита от зависшего шага. Проверки короткие
+(все 60 тестов локально — около секунды), а без ограничения зависшее
 задание занимало бы runner до шести часов — это лимит GitHub по умолчанию.
 
 ### Почему действия закреплены SHA
@@ -137,7 +173,9 @@ uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 | `pyproject.toml` | Зависимости и настройки pytest, Ruff, mypy; политика возраста пакетов |
 | `uv.lock` | Точные версии и хэши всех пакетов; `uv sync --locked` ставит именно их |
 | `.python-version` | Версия Python для uv: 3.12 |
-| `app/`, `tests/` | Что проверяют mypy и pytest |
+| `app/`, `tests/`, `migrations/` | Что проверяют mypy и pytest |
+| `alembic.ini`, `migrations/versions/` | Миграции, которые применяют шаги 7–9 |
+| `sql/` | Запросы, которые выполняют интеграционные тесты |
 | `docs/**/*.md`, `README.md` | Python-блоки внутри проверяет `ruff format` |
 
 ## 6. Что проверить в GitHub перед первым запуском
@@ -173,7 +211,7 @@ git push origin main
 
 1. Вкладка **Actions** → workflow **CI** → запуск с нужным коммитом.
 2. Задание называется **Lint, types and tests**.
-3. Зелёная галочка — все семь шагов прошли. Красный крестик — открой
+3. Зелёная галочка — все десять шагов прошли. Красный крестик — открой
    задание и раскрой красный шаг: там полный вывод команды.
 
 Значок результата также виден рядом с коммитом на главной странице
@@ -187,9 +225,20 @@ git push origin main
 uv sync --locked
 uv run --locked ruff check .
 uv run --locked ruff format --check .
-uv run --locked mypy app tests
-uv run --locked pytest
+uv run --locked mypy app tests migrations
+docker compose --profile test up --detach --wait db-test
+export TEST_DATABASE_URL='postgresql+psycopg://analyst:analyst_test@127.0.0.1:5437/industrialflow_test'
+export DATABASE_URL="$TEST_DATABASE_URL"
+uv run --locked alembic upgrade head
+uv run --locked alembic check
+uv run --locked alembic downgrade base
+uv run --locked alembic upgrade head
+CI=true uv run --locked pytest
 ```
+
+`DATABASE_URL` переопределён на тестовую базу так же, как в CI: миграции
+не трогают базу разработки. `CI=true` включает строгий режим: интеграционные
+тесты не будут пропущены.
 
 Проверить сам workflow без отправки на GitHub:
 
@@ -208,6 +257,9 @@ uvx --from actionlint-py actionlint .github/workflows/ci.yml
 | Ruff lint | Стиль, порядок импортов, неиспользуемый импорт | `uv run ruff check --fix .`, остальное исправить вручную |
 | Ruff format | Файл или Python-блок в Markdown не отформатирован | `uv run ruff format .` |
 | Mypy | Ошибка типов или функция без аннотаций | Исправить по сообщению mypy |
+| Apply migrations | Ошибка в файле миграции | Повторить `alembic upgrade head` на `db-test` и прочитать сообщение |
+| Check models match migrations | Модель изменена без новой миграции | `alembic revision --autogenerate`, проверить и закоммитить файл |
+| Check downgrade and upgrade | `downgrade()` не отменяет `upgrade()` | Исправить `downgrade()` в новой миграции |
 | Pytest | Тест упал | Запустить `uv run pytest -x -v` локально и разобраться |
 | Любой, но локально всё зелёное | Файл не закоммичен или зависит от локального `.env` | Проверка в чистом клоне (раздел 9) |
 
@@ -218,7 +270,7 @@ uvx --from actionlint-py actionlint .github/workflows/ci.yml
 
 | Этап | Что добавится в CI |
 | --- | --- |
-| 02 | Временная PostgreSQL в задании, миграции Alembic `upgrade` и проверка расхождения моделей и схемы |
+| 02 | **Сделано:** PostgreSQL в задании, миграции `upgrade`, `alembic check`, откат и интеграционные тесты |
 | 03 | Генерация демо-данных с фиксированным seed и проверка их качества |
 | 04–05 | Тесты аналитики: SQL и Pandas дают одинаковые результаты |
 | 07, 09 | Оценки агента на наборе вопросов с эталонными ответами, проверки безопасности |
