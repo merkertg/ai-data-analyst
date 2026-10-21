@@ -10,7 +10,7 @@ from sqlalchemy import Engine
 from sqlalchemy.exc import SQLAlchemyError
 
 from app import __version__
-from app.api import analytics, metrics, reports
+from app.api import agents, analytics, metrics, reports
 from app.api.errors import NOT_READY, register_error_handlers
 from app.config import get_settings
 from app.db.readiness import current_revision, expected_revision
@@ -44,6 +44,8 @@ register_error_handlers(app)
 app.include_router(metrics.router)
 app.include_router(analytics.router)
 app.include_router(reports.router)
+# Этап 07: AI-аналитик — вопросы на естественном языке и история запусков.
+app.include_router(agents.router)
 
 
 class HealthResponse(BaseModel):

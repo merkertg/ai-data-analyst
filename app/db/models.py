@@ -223,3 +223,52 @@ class Report(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
+
+
+class AgentRunStatus(StrEnum):
+    """Итог запуска агента: проверенный отчёт или безопасная ошибка."""
+
+    COMPLETED = "completed"
+    FAILED = "failed"
+
+
+class AgentRun(Base):
+    """История расследования: вопрос, вызовы инструментов, отчёт или ошибка.
+
+    Запуск сохраняется и при ошибке — с частичным следом вызовов, чтобы
+    было видно, что агент успел сделать. Ключ API, системный промпт и ответы
+    SDK сюда не попадают.
+    """
+
+    __tablename__ = "agent_runs"
+    __table_args__ = (
+        CheckConstraint("status IN ('completed', 'failed')", name="status_allowed"),
+        CheckConstraint("provider IN ('mock', 'openai')", name="provider_allowed"),
+        # Готовый запуск хранит отчёт, неудачный — ошибку; не оба и не ни одного.
+        CheckConstraint(
+            "(status = 'completed' AND report IS NOT NULL AND error IS NULL)"
+            " OR (status = 'failed' AND report IS NULL AND error IS NOT NULL)",
+            name="outcome_matches_status",
+        ),
+        CheckConstraint("duration_ms >= 0", name="duration_not_negative"),
+        Index(None, "created_at"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    question: Mapped[str] = mapped_column(String(2000))
+    status: Mapped[str] = mapped_column(String(16))
+    provider: Mapped[str] = mapped_column(String(16))
+    model: Mapped[str] = mapped_column(String(200))
+    # Отчёт по строгой схеме AnalysisReport — только у успешного запуска.
+    # none_as_null: Python None — это SQL NULL, а не JSON-значение null;
+    # иначе CHECK outcome_matches_status увидел бы «непустой» столбец.
+    report: Mapped[dict[str, Any] | None] = mapped_column(JSONB(none_as_null=True))
+    # {"code": ..., "detail": ...} — публичный текст, без исключений SDK.
+    error: Mapped[dict[str, Any] | None] = mapped_column(JSONB(none_as_null=True))
+    # Шаги, исправления, вызовы инструментов с аргументами и результатами, токены.
+    trace: Mapped[dict[str, Any]] = mapped_column(JSONB)
+    duration_ms: Mapped[int] = mapped_column(Integer)
+    app_version: Mapped[str] = mapped_column(String(32))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
