@@ -19,7 +19,10 @@ from guide.layout import (
     p,
     simple_table,
 )
-from guide.toc import section
+from guide.toc import number_of, section
+
+# Номер раздела с итогами: при вставке новых разделов он сдвигается сам.
+RESULTS = number_of("Итоги проверки")
 
 
 def add_stage03(story):
@@ -341,7 +344,7 @@ def add_stage03(story):
                 "удалённый GitHub Actions подтверждается отдельно.",
                 "<b>Integration tests:</b> TEST_DATABASE_URL only, with a database "
                 "name ending in _test. Tests never use the development .env "
-                "database. Actual results are in section 34 and "
+                f"database. Actual results are in section {RESULTS} and "
                 "docs/VERIFICATION.md; remote GitHub Actions is confirmed separately.",
             )
         ),

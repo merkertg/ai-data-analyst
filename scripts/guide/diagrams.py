@@ -36,7 +36,55 @@ from guide.layout import (
 )
 
 # Сколько этапов курса уже выполнено: зелёные карточки дорожной карты.
-STAGES_DONE = 5
+STAGES_DONE = 6
+
+
+def api_flow(c, w, h):
+    """HTTP request path: validation first, then a lazy session and the core."""
+    gap, bh = 14, 47
+    bw = (w - 3 * gap) / 4
+    top_y = h - bh - 5
+    items = [
+        (
+            tr("Клиент", "Client"),
+            tr("curl, UI, агент", "curl, UI, agent"),
+            SLATE_L,
+            MUTED,
+        ),
+        ("Pydantic", tr("проверка параметров", "parameter checks"), VIOLET_L, VIOLET),
+        (
+            tr("Маршрут и сервис", "Route and service"),
+            "app/api, app/services",
+            BLUE_L,
+            BLUE,
+        ),
+        (
+            tr("Ядро и PostgreSQL", "Core and PostgreSQL"),
+            "REPEATABLE READ",
+            TEAL_L,
+            TEAL,
+        ),
+    ]
+    for index, (title, sub, fill, edge) in enumerate(items):
+        x = index * (bw + gap)
+        node(c, x, top_y, bw, bh, title, sub, fill, edge)
+        if index < len(items) - 1:
+            arrow(c, x + bw + 2, top_y + bh / 2, x + bw + gap - 2, top_y + bh / 2)
+    bottom = [
+        (1, "422", tr("до первого SQL", "before any SQL"), AMBER_L, AMBER),
+        (
+            2,
+            "reports",
+            tr("POST: снимок в JSONB", "POST: JSONB snapshot"),
+            GREEN_L,
+            GREEN,
+        ),
+        (3, "503", tr("база недоступна", "database unavailable"), ORANGE_L, ORANGE),
+    ]
+    for column, title, sub, fill, edge in bottom:
+        x = column * (bw + gap)
+        node(c, x, 5, bw, bh, title, sub, fill, edge)
+        arrow(c, x + bw / 2, top_y - 2, x + bw / 2, 5 + bh + 2, edge)
 
 
 def anomaly_flow(c, w, h):

@@ -36,6 +36,9 @@ CONTENTS = [
     ("Статистические кандидаты", "Statistical candidates"),
     ("Isolation Forest", "Isolation Forest"),
     ("Отдельная оценка сценариев", "Offline scenario evaluation"),
+    ("REST API и параметры", "REST API and parameters"),
+    ("Сессии и ошибки", "Sessions and errors"),
+    ("Сохранённые отчёты", "Saved reports"),
     ("CI на GitHub Actions", "CI on GitHub Actions"),
     ("Шпаргалка команд", "Command cheat sheet"),
     ("Типичные ошибки", "Common errors"),
@@ -49,6 +52,15 @@ STAGE_02_SECTIONS = range(12, 21)
 STAGE_03_SECTIONS = range(21, 24)
 STAGE_04_SECTIONS = range(24, 27)
 STAGE_05_SECTIONS = range(27, 30)
+STAGE_06_SECTIONS = range(30, 33)
+
+
+def number_of(ru_title: str) -> int:
+    """Номер раздела по русскому заголовку: ссылки не ломаются при вставке разделов."""
+    for index, (ru, _) in enumerate(CONTENTS):
+        if ru == ru_title:
+            return index + 1
+    raise ValueError(f"Нет раздела {ru_title!r}")
 
 
 def title(number: int) -> str:

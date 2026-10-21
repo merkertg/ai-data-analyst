@@ -37,9 +37,9 @@ Fixtures: `migrated_engine` builds the schema once per run with `alembic downgra
 | `tests/test_config.py` | Settings priority; `DATABASE_URL` driver and database validation; password hidden from errors and `repr` |
 | `tests/test_ready.py` | `/ready` answers `503` without a database or with an unreachable one; `/health` does not need a database |
 | `tests/test_session.py` | Lazy engine, `DatabaseNotConfigured`, disposing an unused pool |
-| `tests/test_models.py` | Six tables, `NUMERIC(12, 2)` money, delete rules, named constraints, `OrderStatus` vs `CHECK` |
+| `tests/test_models.py` | Six domain tables plus `reports`, `NUMERIC(12, 2)` money, delete rules, named constraints, `OrderStatus` vs `CHECK` |
 | `tests/test_version.py` | `app.__version__` matches `pyproject.toml` |
-| `tests/integration/test_migrations.py` | Upgrade, downgrade round trip, `alembic check`, `/ready` on a real database |
+| `tests/integration/test_migrations.py` | Upgrade, downgrade round trip, rollback of `0002` alone, `alembic check`, `/ready` on a real database |
 | `tests/integration/test_constraints.py` | 20 invalid rows rejected by the named constraint, cascade delete, exact `Decimal`, `timestamptz` |
 | `tests/integration/test_queries.py` | The four files in `sql/` return hand-computed results on the sample data |
 | `tests/test_demo_data.py`, `tests/test_data_quality.py` | Seeded generation, equal bundle bytes, money, scenarios, bundle validation and quality report behaviour |
@@ -49,6 +49,8 @@ Fixtures: `migrated_engine` builds the schema once per run with `alembic downgra
 | `tests/test_detection.py` | Positive and ordinary robust-statistic/IQR cases, zero MAD, short histories, full-month filtering, stockout gaps and Isolation Forest reproducibility |
 | `tests/test_anomalies_cli.py`, `tests/test_anomaly_evaluation.py` | Input validation, safe errors, exact report JSON, exclusive report creation and separate positive-scenario coverage matching |
 | `tests/integration/test_anomaly_features.py` | Exact SQL features, independent refund/sales aggregates, Moscow boundaries, partial buckets, line and stock scopes and read-only behaviour |
+| `tests/test_api_validation.py` | Stage 06: invalid queries and report bodies get 422 without any SQL (a stand-in engine fails the test), non-UUID ids, 503 without `DATABASE_URL`, routes and error answers in OpenAPI |
+| `tests/integration/test_api.py` | API answers equal hand-computed sample results and the analytics core, empty periods, report round trip and snapshot behaviour, listing, 404, `READ ONLY` `REPEATABLE READ` sessions |
 
 Useful options:
 
@@ -90,6 +92,15 @@ uv run pytest tests/integration/test_anomaly_features.py
 The same `_test` database safety rules apply. The detector never reads evaluation labels; the separate evaluator reads a report and `ground_truth.json` from the same bundle. Integration tests verify features against hand-computed data. Model tests use fixed numerical examples and seeds. Monthly rules and Isolation Forest skip partial calendar months; tests must preserve that distinction from clipped feature extraction.
 
 For a full-bundle smoke check, use a dedicated empty `_test` database, explicitly point the CLIs at it, load the generated bundle, run quality checks, detect with seed 42 and evaluate separately. Repeat detection into a different new output path to compare JSON bytes; an existing output file is refused. Coverage of A01–A05 measures five injected positive scenarios. It is not precision, a false-positive rate or independent model quality, and additional candidates are not automatically incorrect. Record actual results in [VERIFICATION.md](../VERIFICATION.md); a local run does not confirm GitHub Actions.
+
+## REST API
+
+```bash
+uv run --locked pytest tests/test_api_validation.py
+uv run --locked pytest tests/integration/test_api.py
+```
+
+Unit tests replace `get_engine` with a function that fails the test, so a request rejected with 422 is proven never to reach SQL. Integration tests override the `read_session` and `write_session` dependencies with the rolled-back `_test` session and compare API answers with hand-computed sample results and the analytics core; one test opens the real read dependency and checks that PostgreSQL rejects a write. For a server smoke check, point `DATABASE_URL` at a dedicated `_test` database with the loaded bundle, apply migrations, run `uv run uvicorn app.main:app` and call the endpoints from [Using the API](usage.md).
 
 ## Migrations
 

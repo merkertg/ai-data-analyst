@@ -93,13 +93,15 @@ def app_facts() -> dict[str, str]:
 
 
 def schema_counts() -> dict[str, int]:
-    """Сколько таблиц, ограничений каждого вида и индексов описано в моделях."""
+    """Сколько таблиц, ограничений и индексов в схеме данных (без reports)."""
     sys.path.insert(0, str(PROJECT_ROOT))
     import app.db.models  # noqa: F401 — регистрирует таблицы
     from app.db.base import Base
 
-    counts = {"tables": len(Base.metadata.tables), "indexes": 0}
-    for table in Base.metadata.tables.values():
+    # Схема данных этапа 02; таблица reports этапа 06 описана отдельно.
+    tables = [t for name, t in Base.metadata.tables.items() if name != "reports"]
+    counts = {"tables": len(tables), "indexes": 0}
+    for table in tables:
         counts["indexes"] += len(table.indexes)
         for constraint in table.constraints:
             kind = type(constraint).__name__

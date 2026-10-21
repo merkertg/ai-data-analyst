@@ -2,7 +2,7 @@
 
 [← README](../../README.md) · [All documentation](../../README.md#documentation)
 
-Install uv, start PostgreSQL, apply migrations, start the API and check that it is ready. Detailed walkthroughs in Russian are in the [Stage 01](../STAGE_01.md), [Stage 02](../STAGE_02.md), [Stage 03](../STAGE_03.md), [Stage 04](../STAGE_04.md) and [Stage 05](../STAGE_05.md) guides.
+Install uv, start PostgreSQL, apply migrations, start the API and check that it is ready. Detailed walkthroughs in Russian are in the [Stage 01](../STAGE_01.md), [Stage 02](../STAGE_02.md), [Stage 03](../STAGE_03.md), [Stage 04](../STAGE_04.md), [Stage 05](../STAGE_05.md) and [Stage 06](../STAGE_06.md) guides.
 
 ## Requirements
 
@@ -116,7 +116,16 @@ curl http://127.0.0.1:8000/health
 curl http://127.0.0.1:8000/ready
 ```
 
-`/health` returns `{"status":"ok"}` — the process is up. `/ready` returns `{"status":"ready","revision":"0001"}` — the database is reachable and migrated; otherwise it answers `503`. Interactive documentation: <http://127.0.0.1:8000/docs>. Stop the server with `Ctrl+C`, and PostgreSQL with `docker compose stop`.
+`/health` returns `{"status":"ok"}` — the process is up. `/ready` returns `{"status":"ready","revision":"0002"}` — the database is reachable and migrated; otherwise it answers `503`. Interactive documentation: <http://127.0.0.1:8000/docs>. Stop the server with `Ctrl+C`, and PostgreSQL with `docker compose stop`.
+
+The same analytics are available over HTTP once data is loaded:
+
+```bash
+curl "http://127.0.0.1:8000/api/metrics/revenue?start=2026-09-01&end=2026-10-01&compare_start=2026-08-01&compare_end=2026-09-01"
+curl "http://127.0.0.1:8000/api/analytics/anomalies?start=2026-01-01&end=2026-10-01"
+```
+
+See [Using the API](usage.md) for every endpoint, parameters and saved reports. There is no authentication yet: keep the server on `127.0.0.1`.
 
 If port 8000 is busy, choose another one: `--port 8001`.
 

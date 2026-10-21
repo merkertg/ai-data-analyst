@@ -42,6 +42,7 @@ from guide.toc import (
     STAGE_03_SECTIONS,
     STAGE_04_SECTIONS,
     STAGE_05_SECTIONS,
+    STAGE_06_SECTIONS,
 )
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
@@ -99,10 +100,10 @@ def cover_page(c, doc):
         tr(
             "Наглядное руководство: окружение uv, API на FastAPI, PostgreSQL в Docker, "
             "миграции Alembic, SQL, воспроизводимые данные, аналитика, аномалии, "
-            "тесты и CI.",
+            "REST API, тесты и CI.",
             "A visual guide: the uv environment, a FastAPI API, PostgreSQL in Docker, "
             "Alembic migrations, SQL, reproducible data, analytics, anomalies, "
-            "tests and CI.",
+            "a REST API, tests and CI.",
         ),
         "PT",
         14,
@@ -115,9 +116,9 @@ def cover_page(c, doc):
     steps = [
         (tr("Клиент", "Client"), tr("curl или /docs", "curl or /docs")),
         ("Uvicorn", tr("сервер :8000", "server :8000")),
-        ("FastAPI", "/health · /ready"),
+        ("FastAPI", "/api · /ready"),
         ("SQLAlchemy", tr("пул и сессии", "pool and sessions")),
-        ("PostgreSQL", tr("6 таблиц", "6 tables")),
+        ("PostgreSQL", tr("данные и отчёты", "data and reports")),
     ]
     top = PAGE_H - 370
     box_w, box_h, gap = 86, 54, 13
@@ -174,7 +175,7 @@ def cover_page(c, doc):
                 f"{passed_checks} / {len(checks)}",
                 tr("локальных проверок PASS", "local checks PASS"),
             ),
-            (str(doc.counts["tables"]), tr("таблиц PostgreSQL", "PostgreSQL tables")),
+            (str(doc.counts["tables"]), tr("таблиц с данными", "data tables")),
             (str(doc.lock_packages), tr("пакетов в uv.lock", "packages in uv.lock")),
         ],
         HEX("#1E293B"),
@@ -195,12 +196,14 @@ def cover_page(c, doc):
             f"02: {STAGE_02_SECTIONS[0]}–{STAGE_02_SECTIONS[-1]} · "
             f"03: {STAGE_03_SECTIONS[0]}–{STAGE_03_SECTIONS[-1]} · "
             f"04: {STAGE_04_SECTIONS[0]}–{STAGE_04_SECTIONS[-1]} · "
-            f"05: {STAGE_05_SECTIONS[0]}–{STAGE_05_SECTIONS[-1]}",
+            f"05: {STAGE_05_SECTIONS[0]}–{STAGE_05_SECTIONS[-1]} · "
+            f"06: {STAGE_06_SECTIONS[0]}–{STAGE_06_SECTIONS[-1]}",
             f"01: {STAGE_01_SECTIONS[0]}–{STAGE_01_SECTIONS[-1]} · "
             f"02: {STAGE_02_SECTIONS[0]}–{STAGE_02_SECTIONS[-1]} · "
             f"03: {STAGE_03_SECTIONS[0]}–{STAGE_03_SECTIONS[-1]} · "
             f"04: {STAGE_04_SECTIONS[0]}–{STAGE_04_SECTIONS[-1]} · "
-            f"05: {STAGE_05_SECTIONS[0]}–{STAGE_05_SECTIONS[-1]}",
+            f"05: {STAGE_05_SECTIONS[0]}–{STAGE_05_SECTIONS[-1]} · "
+            f"06: {STAGE_06_SECTIONS[0]}–{STAGE_06_SECTIONS[-1]}",
         ),
     )
     c.setFont("PT", 9.3)
@@ -218,9 +221,12 @@ def cover_page(c, doc):
             c.setFillColor(HEX("#FDBA74"))
         elif number in STAGE_05_SECTIONS:
             c.setFillColor(HEX("#86EFAC"))
+        elif number in STAGE_06_SECTIONS:
+            c.setFillColor(HEX("#FDE68A"))
         else:
             c.setFillColor(HEX("#94A3B8"))
-        c.drawString(MARGIN + column * 250, 300 - row * 12.0, f"{number}  {tr(ru, en)}")
+        # 19 строк в колонке: шаг 11.5 оставляет последнюю строку выше линии y=82.
+        c.drawString(MARGIN + column * 250, 300 - row * 11.5, f"{number}  {tr(ru, en)}")
     c.setStrokeColor(HEX("#334155"))
     c.line(MARGIN, 82, PAGE_W - MARGIN, 82)
     c.setFillColor(HEX("#64748B"))
@@ -240,8 +246,8 @@ def cover_page(c, doc):
         MARGIN,
         53,
         tr(
-            "Этапы: docs/STAGE_01.md–STAGE_05.md; отчёт: docs/VERIFICATION.md",
-            "Stage guides: docs/STAGE_01.md–STAGE_05.md; "
+            "Этапы: docs/STAGE_01.md–STAGE_06.md; отчёт: docs/VERIFICATION.md",
+            "Stage guides: docs/STAGE_01.md–STAGE_06.md; "
             "instructions: docs/instructions/",
         ),
     )
@@ -316,7 +322,7 @@ def load_verification(path):
         ):
             raise ValueError("Для каждой проверки нужны name, command, result, status")
     for item in data["http"]:
-        if not all(isinstance(item.get(key), str) for key in ("request", "status")):
+        if not isinstance(item.get("status"), str) or not _is_text(item.get("request")):
             raise ValueError("Для каждого HTTP-ответа нужны request и status")
         if not _is_text(item.get("body")):
             raise ValueError("Для каждого HTTP-ответа нужно body")

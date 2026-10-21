@@ -28,7 +28,7 @@ uv run alembic upgrade head
 uv run alembic current
 ```
 
-Expected output: `0001 (head)`. `curl http://127.0.0.1:8000/ready` returns `{"status":"ready","revision":"0001"}` while the API is running.
+Expected output: `0002 (head)`. Migration `0001` creates the six domain tables; `0002` (Stage 06) adds the `reports` table for saved API reports. `curl http://127.0.0.1:8000/ready` returns `{"status":"ready","revision":"0002"}` while the API is running.
 
 ## Sample data
 
@@ -79,7 +79,7 @@ The same files are executed by `tests/integration/test_queries.py` and compared 
 2. Generate a migration and **read it**:
 
    ```bash
-   uv run alembic revision --autogenerate --rev-id 0002 -m "Describe the change"
+   uv run alembic revision --autogenerate --rev-id 0003 -m "Describe the change"
    ```
 
 3. Apply it and check that models and migrations match:

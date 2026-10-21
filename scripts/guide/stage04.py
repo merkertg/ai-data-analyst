@@ -21,7 +21,10 @@ from guide.layout import (
     p,
     simple_table,
 )
-from guide.toc import section
+from guide.toc import number_of, section
+
+# Номер раздела с итогами: при вставке новых разделов он сдвигается сам.
+RESULTS = number_of("Итоги проверки")
 
 
 def add_stage04(story):
@@ -282,11 +285,11 @@ def add_stage04(story):
                 "Интеграционные тесты — только TEST_DATABASE_URL с суффиксом "
                 "_test. Проверяются ручные суммы, двойной счёт, округление, "
                 "Московские границы, пустые месяцы, сравнения и вклады. "
-                "Фактические результаты — раздел 34 и docs/VERIFICATION.md.",
+                f"Фактические результаты — раздел {RESULTS} и docs/VERIFICATION.md.",
                 "Integration tests use TEST_DATABASE_URL ending in _test only. "
                 "They cover manual totals, double counting, rounding, Moscow "
                 "boundaries, empty months, comparisons and contributions. "
-                "Actual outcomes are in section 34 and docs/VERIFICATION.md.",
+                f"Actual outcomes are in section {RESULTS} and docs/VERIFICATION.md.",
             ),
             SMALL,
         ),

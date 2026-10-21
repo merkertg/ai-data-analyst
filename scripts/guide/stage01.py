@@ -12,7 +12,7 @@ from guide.diagrams import (
     uv_flow,
     validation_levels,
 )
-from guide.i18n import tr
+from guide.i18n import loc, tr
 from guide.layout import (
     AMBER,
     AMBER_L,
@@ -469,7 +469,7 @@ def add_stage01(story, verification, dependencies, lock_packages, facts):
     ]
 
     # 6. HTTP и JSON
-    http_facts = {item["request"]: item["status"] for item in verification["http"]}
+    http_facts = {loc(item["request"]): item["status"] for item in verification["http"]}
     section(
         story,
         6,

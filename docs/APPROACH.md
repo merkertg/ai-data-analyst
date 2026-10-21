@@ -8,18 +8,22 @@ The application answers such questions by running a short investigation: it sele
 
 The project uses fictional IndustrialFlow data generated with a fixed seed.
 
-## Current implementation: Stages 01–05
+## Current implementation: Stages 01–06
 
-The application has a runnable HTTP foundation, a PostgreSQL schema created by versioned migrations, reproducible generated data, an atomic loader and read-only cross-table quality checks. A read-only analytics CLI and reusable functions calculate exact financial metrics, comparisons and contributions. Anomaly detection adds statistical rules, stockout runs and seeded Isolation Forest candidates, with a separate offline evaluation of injected-scenario coverage. The metrics HTTP API and LLM agent follow in later stages.
+The application has a runnable HTTP foundation, a PostgreSQL schema created by versioned migrations, reproducible generated data, an atomic loader and read-only cross-table quality checks. A read-only analytics CLI and reusable functions calculate exact financial metrics, comparisons and contributions. Anomaly detection adds statistical rules, stockout runs and seeded Isolation Forest candidates, with a separate offline evaluation of injected-scenario coverage. A REST API exposes the same metrics, contributions and anomaly candidates and saves report snapshots. The LLM agent follows in Stage 07.
 
 ```text
 HTTP client → Uvicorn → FastAPI
                          ├─ GET /health → HealthResponse {"status": "ok"}
                          ├─ GET /ready  → connection + alembic_version == latest migration
+                         ├─ GET /api/metrics/{revenue,orders}          ┐ query model (422),
+                         ├─ GET /api/analytics/{categories,regions,     │ read-only snapshot
+                         │                       anomalies}              │ session → services
+                         ├─ POST /api/reports, GET /api/reports[/{id}]  ┘ → app.analytics
                          └─ /docs, /redoc and /openapi.json → API documentation
 
 Alembic migrations → PostgreSQL 17: customers, products, orders,
-                     order_items, refunds, inventory_snapshots
+                     order_items, refunds, inventory_snapshots, reports
 Sample CLI (python -m app.db.sample) → small dataset with known answers
 Generator (python -m app.data.generate) → CSV + manifest + evaluation ground truth
 Loader (python -m app.data.load) → one transaction, empty domain tables only
@@ -122,6 +126,7 @@ Architecture decisions are recorded as ADRs in [adr/](adr/):
 - [ADR 0003: Reproducible demo data and safe loading](adr/0003-reproducible-demo-data-and-safe-loading.md) — standard-library seeded generation, exact monetary serialization, manifest integrity, atomic loading and quality checks.
 - [ADR 0004: Deterministic analytics core](adr/0004-deterministic-analytics-core.md) — explicit period semantics, independent SQL aggregates, exact comparisons, signed contributions and a snapshot-consistent CLI without Pandas or DuckDB.
 - [ADR 0005: Anomaly detection and offline evaluation](adr/0005-anomaly-detection-and-offline-evaluation.md) — full-month retrospective rules, seeded Isolation Forest, exact feature extraction and separate positive-scenario coverage.
+- [ADR 0006: REST API and saved reports](adr/0006-rest-api-and-saved-reports.md) — thin routers over shared services, validated query models, lazy read-only snapshot sessions, money as JSON strings, safe 503 mapping and immutable JSONB report snapshots.
 
 ## Architecture
 
@@ -152,6 +157,12 @@ Stage 05 extracts monthly category and region/category features, paid lines and 
 
 All findings are investigation candidates. The analysis is retrospective and is not forecasting or an unseen temporal holdout. Partial monthly buckets are retained as features but excluded from monthly detection. Only the separate offline evaluator reads the answer key and matches findings to A01–A05 by scope. This measures coverage of five injected positives, not precision, false-positive rate or independent generalisation. Additional candidates cannot automatically be labelled incorrect.
 
+## REST API
+
+`app/api/` contains thin FastAPI routers; `app/services/` arranges results of `app/analytics` into response models, so the API, the CLIs and the future agent share one implementation. Query parameters are Pydantic models with `extra="forbid"` and validators for half-open periods, the 120-month bound, paired comparison dates and the seed range; invalid requests receive 422. Each GET runs in a `REPEATABLE READ READ ONLY` session injected with `Depends`; sessions resolve the engine lazily on the first statement, because FastAPI resolves dependencies even for invalid parameters. Responses serialise `Decimal` money as JSON strings and undefined values as `null`. A missing or unreachable database maps to one 503 text without internal details.
+
+`POST /api/reports` computes a comparison or anomaly result and stores it in the `reports` table (migration `0002`): UUID id, checked `kind`, request parameters and API-shaped result as JSONB, application version and creation time. Reports are immutable snapshots without foreign keys to sales rows. There is no authentication yet; the API is intended for `127.0.0.1` until the Stage 09 security work.
+
 ## Next steps
 
-Stage 06 exposes the existing exact metrics and analysis through a REST API with validated inputs and stable JSON contracts. The LLM agent follows in Stage 07 and must use tool evidence, distinguish hypotheses from facts, and keep evaluation ground truth outside runtime.
+Stage 07 adds the LLM agent. Its tools call the same `app/services` functions as the REST API, so every number in an answer comes from SQL and Decimal; the agent must distinguish facts from hypotheses, cite tool results and keep the evaluation ground truth outside runtime. Its final report is saved in the `reports` table.

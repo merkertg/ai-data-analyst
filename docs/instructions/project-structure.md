@@ -10,10 +10,22 @@ Where each part of the application, tests, and documentation lives.
 app/
   __init__.py            # Package marker and the code version (__version__)
   config.py              # Settings from environment variables and .env; get_settings()
-  main.py                # FastAPI application, GET /health and GET /ready
+  main.py                # FastAPI application, /health, /ready, error handlers and /api routers
+  api/
+    dependencies.py      # Lazy read-only snapshot and write sessions injected with Depends
+    errors.py            # Missing or unreachable database -> one safe 503 text
+    metrics.py           # GET /api/metrics/revenue and /orders
+    analytics.py         # GET /api/analytics/categories, /regions and /anomalies
+    reports.py           # POST /api/reports, GET /api/reports and /api/reports/{id}
+  schemas/
+    analytics.py         # Query models with period validation and response models (money as strings)
+    reports.py           # Report requests (discriminated by kind) and responses
+  services/
+    analytics.py         # Build API responses from the analytics core; shared with the future agent
+    reports.py           # Create, read and list immutable report snapshots
   db/
     base.py              # DeclarativeBase and the constraint naming convention
-    models.py            # customers, products, orders, order_items, refunds, inventory_snapshots
+    models.py            # customers, products, orders, order_items, refunds, inventory_snapshots, reports
     session.py           # Lazy engine (connection pool) and sessions
     readiness.py         # Schema version in the database vs the latest migration
     sample.py            # Small sample dataset with hand-computed answers (python -m app.db.sample)
@@ -35,6 +47,7 @@ migrations/
   script.py.mako         # Template for new migration files
   versions/
     0001_initial_schema.py   # Six tables with keys, checks and indexes
+    0002_add_saved_reports.py  # reports: UUID, kind, JSONB parameters and result, version, time
 data/demo/               # Generated CSV, manifest and ground truth; ignored by Git
 sql/
   01_paid_order_totals.sql ... 04_double_counting.sql   # Hand-written queries, verified by tests
@@ -45,6 +58,7 @@ tests/
   test_analytics_models.py, test_analytics_cli.py      # Stage 04 periods, comparisons, CLI validation/JSON
   test_detection.py, test_anomalies_cli.py             # Stage 05 rules, model, report CLI and safe output
   test_anomaly_evaluation.py                          # Separate positive-scenario coverage matching
+  test_api_validation.py                              # Stage 06 parameter/body validation without SQL, 503, OpenAPI
   integration/           # Real PostgreSQL from TEST_DATABASE_URL (*_test only)
     conftest.py          # Safety checks, migrated schema, rolled-back session per test
     test_migrations.py   # Upgrade, downgrade, alembic check, /ready
@@ -54,6 +68,7 @@ tests/
     test_data_quality.py # Cross-table violations on real PostgreSQL
     test_analytics.py    # Exact metrics, boundaries, monthly buckets, comparisons and contributions
     test_anomaly_features.py # Exact monthly/line/stock SQL features and read-only behaviour
+    test_api.py          # API answers vs manual results and the core, report snapshots, READ ONLY sessions
 scripts/
   build_guide.py         # Builds the PDF guide in Russian and English (ReportLab, not a project dependency)
   guide/                 # Guide modules: language pairs, layout, diagrams, project data, section texts
@@ -89,4 +104,4 @@ Stage 05 detection and offline evaluation live in `app/analytics/`. Planned addi
 | `[tool.ruff]`, `[tool.ruff.lint]` | Python 3.12 target, line length 88, rules `E F I UP B` |
 | `[tool.mypy]` | Strict mode with the Pydantic plugin |
 
-The project is an application, not a package: it was created with `uv init --app --no-package`, has no `[build-system]`, and is not installed into `.venv`. The reasons are recorded in [ADR 0001](../adr/0001-application-layout-and-tooling.md); the database decisions are in [ADR 0002](../adr/0002-postgresql-schema-and-migrations.md); generation and safe loading are in [ADR 0003](../adr/0003-reproducible-demo-data-and-safe-loading.md); the deterministic analytics contract is in [ADR 0004](../adr/0004-deterministic-analytics-core.md); anomaly detection and offline coverage limits are in [ADR 0005](../adr/0005-anomaly-detection-and-offline-evaluation.md).
+The project is an application, not a package: it was created with `uv init --app --no-package`, has no `[build-system]`, and is not installed into `.venv`. The reasons are recorded in [ADR 0001](../adr/0001-application-layout-and-tooling.md); the database decisions are in [ADR 0002](../adr/0002-postgresql-schema-and-migrations.md); generation and safe loading are in [ADR 0003](../adr/0003-reproducible-demo-data-and-safe-loading.md); the deterministic analytics contract is in [ADR 0004](../adr/0004-deterministic-analytics-core.md); anomaly detection and offline coverage limits are in [ADR 0005](../adr/0005-anomaly-detection-and-offline-evaluation.md); the REST API and saved reports are in [ADR 0006](../adr/0006-rest-api-and-saved-reports.md).

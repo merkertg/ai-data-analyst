@@ -1,7 +1,7 @@
 {
   "checked_at": "2026-10-21",
-  "base_commit": "1aa1d24 + worktree",
-  "stage": 5,
+  "base_commit": "e27e587 + worktree",
+  "stage": 6,
   "environment": {
     "os": {
       "ru": "macOS, Apple Silicon",
@@ -13,13 +13,13 @@
     "postgres": "17"
   },
   "tests": {
-    "total": 223,
-    "unit": 136,
-    "integration": 87,
-    "passed": 223,
+    "total": 257,
+    "unit": 156,
+    "integration": 101,
+    "passed": 257,
     "failed": 0,
     "skipped": 0,
-    "seconds": 3.88
+    "seconds": 3.9
   },
   "checks": [
     {
@@ -29,8 +29,8 @@
       },
       "command": "CI=true TEST_DATABASE_URL=... pytest",
       "result": {
-        "ru": "223 passed: 136 unit + 87 integration",
-        "en": "223 passed: 136 unit + 87 integration"
+        "ru": "257 passed: 156 unit + 101 integration",
+        "en": "257 passed: 156 unit + 101 integration"
       },
       "status": "pass"
     },
@@ -53,8 +53,8 @@
       },
       "command": "ruff format --check .",
       "result": {
-        "ru": "Python и блоки Markdown",
-        "en": "Python and Markdown blocks"
+        "ru": "103 файла, включая блоки Markdown",
+        "en": "103 files, Markdown blocks included"
       },
       "status": "pass"
     },
@@ -65,8 +65,8 @@
       },
       "command": "mypy app tests migrations",
       "result": {
-        "ru": "Нет ошибок в 46 файлах",
-        "en": "No issues in 46 files"
+        "ru": "Нет ошибок в 61 файле",
+        "en": "No issues in 61 files"
       },
       "status": "pass"
     },
@@ -77,8 +77,8 @@
       },
       "command": "alembic upgrade / check / downgrade",
       "result": {
-        "ru": "Схема 0001; расхождений нет",
-        "en": "Schema 0001; no model drift"
+        "ru": "Схема 0002; 0002 откатывается отдельно; расхождений нет",
+        "en": "Schema 0002; 0002 rolls back alone; no model drift"
       },
       "status": "pass"
     },
@@ -96,37 +96,49 @@
     },
     {
       "name": {
-        "ru": "Полный детектор",
-        "en": "Full detector"
+        "ru": "API на demo",
+        "en": "API on demo"
       },
-      "command": "python -m app.analytics.anomalies",
+      "command": "uvicorn + curl /api/..., seed 42",
       "result": {
-        "ru": "33 кандидата: 7 robust, 1 IQR, 1 stock, 24 IF",
-        "en": "33 candidates: 7 robust, 1 IQR, 1 stock, 24 IF"
+        "ru": "Сентябрь к августу −165497371.86 (−26.18%); 33 кандидата",
+        "en": "Sep vs Aug −165497371.86 (−26.18%); 33 candidates"
       },
       "status": "pass"
     },
     {
       "name": {
-        "ru": "Сценарии",
-        "en": "Scenarios"
+        "ru": "Отчёты",
+        "en": "Reports"
       },
-      "command": "python -m app.analytics.evaluate",
+      "command": "POST /api/reports, GET location",
       "result": {
-        "ru": "Покрытие A01–A05: 5/5; точность не измерена",
-        "en": "A01–A05 coverage: 5/5; precision not measured"
+        "ru": "201; GET вернул то же тело",
+        "en": "201; GET returned the same body"
       },
       "status": "pass"
     },
     {
       "name": {
-        "ru": "Повторяемость",
-        "en": "Reproducibility"
+        "ru": "Без базы",
+        "en": "No database"
       },
-      "command": "same data + seed 42, two runs",
+      "command": "DATABASE_URL to a closed port",
       "result": {
-        "ru": "JSON-отчёты совпали; 0 нарушений качества",
-        "en": "Equal JSON reports; 0 data quality violations"
+        "ru": "Верный запрос 503, неверный 422",
+        "en": "Valid request 503, invalid 422"
+      },
+      "status": "pass"
+    },
+    {
+      "name": {
+        "ru": "Чистый клон",
+        "en": "Clean clone"
+      },
+      "command": "git clone e27e587 + CI steps",
+      "result": {
+        "ru": "257 passed; миграции вверх, check, вниз",
+        "en": "257 passed; migrations up, check, down"
       },
       "status": "pass"
     }
@@ -140,7 +152,54 @@
     {
       "request": "GET /ready",
       "status": "200 OK",
-      "body": "{\"status\":\"ready\",\"revision\":\"0001\"}"
+      "body": "{\"status\":\"ready\",\"revision\":\"0002\"}"
+    },
+    {
+      "request": "GET /api/metrics/revenue",
+      "status": "200 OK",
+      "body": {
+        "ru": "\"net_revenue\":\"466678757.35\"; к августу −165497371.86 (−26.18%)",
+        "en": "\"net_revenue\":\"466678757.35\"; vs August −165497371.86 (−26.18%)"
+      }
+    },
+    {
+      "request": "GET /api/analytics/categories",
+      "status": "200 OK",
+      "body": {
+        "ru": "pumps 83.75%, compressors 15.90%, sensors 0.18%, valves 0.17%",
+        "en": "pumps 83.75%, compressors 15.90%, sensors 0.18%, valves 0.17%"
+      }
+    },
+    {
+      "request": "GET /api/analytics/anomalies",
+      "status": "200 OK",
+      "body": "\"seed\":42, \"finding_count\":33"
+    },
+    {
+      "request": "POST /api/reports",
+      "status": "201 Created",
+      "body": {
+        "ru": "location: /api/reports/<uuid>; GET отдал то же тело",
+        "en": "location: /api/reports/<uuid>; GET returned the same body"
+      }
+    },
+    {
+      "request": "GET /api/reports/<unknown>",
+      "status": "404 Not Found",
+      "body": "{\"detail\":\"Report not found\"}"
+    },
+    {
+      "request": "GET /api/metrics/revenue end < start",
+      "status": "422 Unprocessable Content",
+      "body": "\"period: start must be earlier than the exclusive end\""
+    },
+    {
+      "request": {
+        "ru": "GET /api/... без базы",
+        "en": "GET /api/... without a database"
+      },
+      "status": "503 Service Unavailable",
+      "body": "{\"detail\":\"Database is not ready\"}"
     },
     {
       "request": "POST /health",
@@ -151,35 +210,27 @@
       "request": "GET /nope",
       "status": "404 Not Found",
       "body": "{\"detail\":\"Not Found\"}"
-    },
-    {
-      "request": "GET /docs",
-      "status": "200 OK",
-      "body": {
-        "ru": "HTML-страница Swagger UI",
-        "en": "Swagger UI HTML page"
-      }
     }
   ],
   "remote_ci": {
     "status": "not_verified",
     "detail": {
-      "ru": "Этап 05 проверен локально поверх 1aa1d24. Результат удалённого GitHub Actions для итогового коммита не подтверждён; приватный репозиторий недоступен через подключённый GitHub API.",
-      "en": "Stage 05 was checked locally on top of 1aa1d24. Remote GitHub Actions for the final commit is not confirmed; the private repository is unavailable through the connected GitHub API."
+      "ru": "Этап 06 проверен локально: код — коммит e27e587, документация — рабочее дерево поверх него. Коммиты этапа 06 ещё не отправлены на GitHub, поэтому результат GitHub Actions для них не подтверждён.",
+      "en": "Stage 06 was checked locally: the code is commit e27e587 and the documentation is the working tree on top of it. Stage 06 commits are not pushed to GitHub yet, so GitHub Actions has not confirmed them."
     }
   },
   "remaining": [
     {
-      "ru": "Этап 06: REST API для точных показателей, сравнений и поиска аномалий.",
-      "en": "Stage 06: REST API for exact metrics, comparisons and anomaly detection."
+      "ru": "Этап 07: AI-агент, который вызывает эти функции как инструменты и объясняет точные числа.",
+      "en": "Stage 07: an AI agent that calls these functions as tools and explains the exact numbers."
     },
     {
-      "ru": "Подтвердить GitHub Actions для итогового коммита; локальный прогон не заменяет удалённый CI.",
-      "en": "Confirm GitHub Actions for the final commit; local checks do not replace remote CI."
+      "ru": "Отправить коммиты и подтвердить GitHub Actions; локальный прогон не заменяет удалённый CI.",
+      "en": "Push the commits and confirm GitHub Actions; local checks do not replace remote CI."
     },
     {
-      "ru": "Оценены пять положительных сценариев; ложные срабатывания, причинность и качество на новых данных не установлены.",
-      "en": "Five positive scenarios were evaluated; false positives, causality and performance on unseen data are not established."
+      "ru": "У API нет авторизации: только 127.0.0.1 до этапа 09. Отчёты нельзя удалить, аномалии пересчитываются на каждый GET.",
+      "en": "The API has no authentication: 127.0.0.1 only until Stage 09. Reports cannot be deleted; anomalies are recomputed on every GET."
     }
   ],
   "dataset": {
@@ -206,12 +257,12 @@
   },
   "pdf": {
     "pages": {
-      "ru": 38,
-      "en": 38
+      "ru": 41,
+      "en": 41
     },
     "visual_review": {
-      "ru": "Все 38 страниц обеих версий просмотрены; новые разделы 27–29, обложка и итоги дополнительно проверены крупно.",
-      "en": "All 38 pages in both versions were reviewed; new sections 27–29, the cover and final results were also inspected at full size."
+      "ru": "Все 41 страница обеих версий просмотрены; новые разделы 30–32, обложка и итоги дополнительно проверены крупно.",
+      "en": "All 41 pages in both versions were reviewed; new sections 30–32, the cover and final results were also inspected at full size."
     }
   },
   "analytics": {
@@ -257,5 +308,29 @@
     "scikit_learn": "1.9.1",
     "numpy": "2.5.3",
     "scipy": "1.18.1"
+  },
+  "api": {
+    "database": "industrialflow_demo_test, seed 42",
+    "revision": "0002",
+    "sep_vs_aug": {
+      "net_change": "-165497371.86",
+      "percent": "-26.18",
+      "paid_orders": 1931,
+      "average_order_value": "242542.35",
+      "aov_percent": "-24.03"
+    },
+    "top_regions": {
+      "Central": "18.56",
+      "Northwest": "17.44",
+      "Volga": "14.38"
+    },
+    "timings_ms": {
+      "revenue": 30,
+      "orders": 16,
+      "categories": 14,
+      "regions": 14,
+      "anomalies": 177,
+      "post_report": 22
+    }
   }
 }

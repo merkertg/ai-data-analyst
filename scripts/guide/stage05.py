@@ -21,7 +21,10 @@ from guide.layout import (
     p,
     simple_table,
 )
-from guide.toc import section
+from guide.toc import number_of, section
+
+# Номер раздела с итогами: при вставке новых разделов он сдвигается сам.
+RESULTS = number_of("Итоги проверки")
 
 
 def add_stage05(story):
@@ -330,12 +333,12 @@ def add_stage05(story):
                 "Проверки: положительные и обычные примеры, MAD = 0, "
                 "короткая история, IQR, складские пропуски, повторяемость модели "
                 "и точные SQL-признаки. Интеграционные тесты — только "
-                "TEST_DATABASE_URL с суффиксом _test. Результаты: раздел 34 "
+                f"TEST_DATABASE_URL с суффиксом _test. Результаты: раздел {RESULTS} "
                 "и docs/VERIFICATION.md. Дальше — REST API, этап 06.",
                 "Checks cover positive and ordinary cases, zero MAD, short "
                 "history, IQR, inventory gaps, model reproducibility and exact "
                 "SQL features. Integration tests use only TEST_DATABASE_URL "
-                "ending in _test. Results: section 34 and docs/VERIFICATION.md. "
+                f"ending in _test. Results: section {RESULTS} and docs/VERIFICATION.md. "
                 "Next is the REST API in Stage 06.",
             ),
             SMALL,

@@ -39,7 +39,8 @@ from guide.stage02 import add_stage02
 from guide.stage03 import add_stage03
 from guide.stage04 import add_stage04
 from guide.stage05 import add_stage05
-from guide.toc import section
+from guide.stage06 import add_stage06
+from guide.toc import number_of, section
 
 # Плотные ячейки для таблиц итогов: страница итогов помещается целиком.
 CELL_TIGHT = ParagraphStyle("celltight", parent=CELL, fontSize=8.3, leading=10.4)
@@ -95,15 +96,15 @@ def build_story(verification, dependencies, lock_packages, facts, counts):
                 "датчики. Руководитель задаёт вопрос обычным языком, а агент вызывает "
                 "аналитические инструменты, точно считает показатели и пишет отчёт. "
                 f"Готовы этапы 01–{STAGES_DONE:02d}: каркас API с проверками и CI, "
-                "база PostgreSQL, данные, проверки качества, точная аналитика "
-                "и поиск аномалий.",
+                "база PostgreSQL, данные, проверки качества, точная аналитика, "
+                "поиск аномалий и REST\u00a0API с сохранёнными отчётами.",
                 "<b>AI Data Analyst</b> is an AI analyst for <b>IndustrialFlow</b>, a "
                 "fictional company selling pumps, compressors, valves and sensors. A "
                 "manager asks in plain language; the agent calls analytics tools, "
                 "computes exact metrics and writes a report. "
                 f"Stages 01–{STAGES_DONE:02d} are done: an API foundation with checks "
                 "and CI, a PostgreSQL database, reproducible data, quality checks, "
-                "exact analytics and anomaly detection.",
+                "exact analytics, anomaly detection and a REST API with saved reports.",
             )
         ),
         Spacer(1, 10),
@@ -112,10 +113,10 @@ def build_story(verification, dependencies, lock_packages, facts, counts):
                 (
                     "API",
                     tr(
-                        "FastAPI: GET /health — процесс жив; GET /ready — база доступна и "
-                        "схема актуальна. Документация /docs строится сама.",
-                        "FastAPI: GET /health — the process is alive; GET /ready — the "
-                        "database is reachable and up to date. /docs is generated.",
+                        "FastAPI: /health и /ready; метрики, вклады групп и аномалии "
+                        "по /api/...; сохранённые отчёты. /docs строится сама.",
+                        "FastAPI: /health and /ready; metrics, group contributions and "
+                        "anomalies under /api/...; saved reports. /docs is generated.",
                     ),
                     BLUE,
                     BLUE_L,
@@ -123,10 +124,10 @@ def build_story(verification, dependencies, lock_packages, facts, counts):
                 (
                     tr("База данных", "Database"),
                     tr(
-                        "PostgreSQL 17 в Docker Compose: 6 таблиц, 28 правил целостности, "
-                        "деньги в NUMERIC, время в timestamptz.",
-                        "PostgreSQL 17 in Docker Compose: 6 tables, 28 integrity rules, "
-                        "money as NUMERIC, time as timestamptz.",
+                        "PostgreSQL 17 в Docker Compose: 6 таблиц данных, 28 правил "
+                        "целостности, NUMERIC и timestamptz; отчёты — в reports.",
+                        "PostgreSQL 17 in Docker Compose: 6 data tables, 28 integrity "
+                        "rules, NUMERIC and timestamptz; reports live in reports.",
                     ),
                     TEAL,
                     TEAL_L,
@@ -196,10 +197,10 @@ def build_story(verification, dependencies, lock_packages, facts, counts):
         Spacer(1, 8),
         callout(
             tr(
-                "<b>Чего ещё нет:</b> REST API метрик (06), "
-                "LLM-агента (07) и интерфейса (08).",
-                "<b>Not there yet:</b> the metrics REST API (06), "
-                "the LLM agent (07) and the UI (08).",
+                "<b>Чего ещё нет:</b> LLM-агента (07), интерфейса (08) "
+                "и авторизации API (09).",
+                "<b>Not there yet:</b> the LLM agent (07), the UI (08) "
+                "and API authentication (09).",
             ),
             AMBER,
             AMBER_L,
@@ -225,12 +226,13 @@ def build_story(verification, dependencies, lock_packages, facts, counts):
     add_stage03(story)
     add_stage04(story)
     add_stage05(story)
+    add_stage06(story)
 
-    # 30. CI on GitHub Actions
+    # CI on GitHub Actions
     remote = verification["remote_ci"]
     section(
         story,
-        30,
+        number_of("CI на GitHub Actions"),
         tr(
             "Те же проверки на чистой Linux-машине с отдельной PostgreSQL.",
             "The same checks on a clean Linux machine with its own PostgreSQL.",
@@ -301,13 +303,13 @@ def build_story(verification, dependencies, lock_packages, facts, counts):
         ),
     ]
 
-    # 31. Command cheat sheet
+    # Command cheat sheet
     section(
         story,
-        31,
+        number_of("Шпаргалка команд"),
         tr(
-            "Основные команды этапов 01–05.",
-            "Essential commands for Stages 01–05.",
+            f"Основные команды этапов 01–{STAGES_DONE:02d}.",
+            f"Essential commands for Stages 01–{STAGES_DONE:02d}.",
         ),
         TEAL,
     )
@@ -350,6 +352,14 @@ def build_story(verification, dependencies, lock_packages, facts, counts):
             "curl -i http://127.0.0.1:8000/ready",
         ),
         (
+            tr("Выручка через API", "Revenue via the API"),
+            "curl '127.0.0.1:8000/api/metrics/revenue?start=2026-09-01&end=2026-10-01'",
+        ),
+        (
+            tr("Сохранённые отчёты", "Saved reports"),
+            "curl '127.0.0.1:8000/api/reports?limit=10'",
+        ),
+        (
             tr("Тестовая база", "Test database"),
             "docker compose --profile test up --detach --wait db-test",
         ),
@@ -388,10 +398,10 @@ def build_story(verification, dependencies, lock_packages, facts, counts):
         )
     )
 
-    # 32. Common errors
+    # Common errors
     section(
         story,
-        32,
+        number_of("Типичные ошибки"),
         tr("Симптом, причина и что сделать.", "Symptom, cause and fix."),
         ORANGE,
     )
@@ -496,6 +506,19 @@ def build_story(verification, dependencies, lock_packages, facts, counts):
             ),
         ),
         (
+            tr("API отвечает 422", "The API answers 422"),
+            tr(
+                "Лишний параметр, end ≤ start, > 120 мес.",
+                "Extra parameter, end ≤ start, > 120 months",
+            ),
+            tr("Прочитать detail[].loc и msg", "Read detail[].loc and msg"),
+        ),
+        (
+            tr("API отвечает 503 на всё", "The API answers 503 to everything"),
+            tr("База не запущена или нет DATABASE_URL", "No database or DATABASE_URL"),
+            tr("Запустить db, проверить /ready", "Start db, check /ready"),
+        ),
+        (
             tr("Данные пропали", "Data is gone"),
             mono("docker compose down -v"),
             tr("Без -v том сохраняется", "Without -v the volume stays"),
@@ -514,10 +537,10 @@ def build_story(verification, dependencies, lock_packages, facts, counts):
         )
     )
 
-    # 33. Check yourself
+    # Check yourself
     section(
         story,
-        33,
+        number_of("Проверь себя"),
         tr(
             "Вопросы для самопроверки и самостоятельные задания.",
             "Self-check questions and practice tasks.",
@@ -625,6 +648,26 @@ def build_story(verification, dependencies, lock_packages, facts, counts):
                 "/health — the process is alive, no database needed; /ready — database reachable and current, otherwise 503.",
             ),
         ),
+        (
+            tr(
+                "Почему неверный запрос получает 422, даже когда база выключена?",
+                "Why does an invalid request get 422 even when the database is down?",
+            ),
+            tr(
+                "Параметры проверяет Pydantic до маршрута, а LazySession выбирает engine только при первом SQL.",
+                "Pydantic validates parameters before the route, and LazySession picks the engine only at the first SQL statement.",
+            ),
+        ),
+        (
+            tr(
+                "Почему сохранённый отчёт не меняется после новых продаж?",
+                "Why does a saved report not change after new sales?",
+            ),
+            tr(
+                "Результат считается один раз и хранится в JSONB; GET отдаёт снимок, а не пересчёт.",
+                "The result is computed once and stored as JSONB; GET returns the snapshot, not a recalculation.",
+            ),
+        ),
     ]
     for index, (question, answer) in enumerate(questions, start=1):
         story += [
@@ -649,22 +692,35 @@ def build_story(verification, dependencies, lock_packages, facts, counts):
         callout(
             tr(
                 "<b>Этап 02.</b> Столбец products.is_active (boolean, NOT NULL, по умолчанию "
-                "true) миграцией 0002 с server_default; alembic check молчит, откат "
+                "true) новой миграцией 0003 с server_default; alembic check молчит, откат "
                 "downgrade -1 работает, есть тест.",
                 "<b>Stage 02.</b> A products.is_active column (boolean, NOT NULL, default "
-                "true) via migration 0002 with server_default; alembic check is quiet, "
+                "true) via a new migration 0003 with server_default; alembic check is quiet, "
                 "downgrade -1 works, a test exists.",
             ),
             TEAL,
             TEAL_L,
         ),
+        Spacer(1, 6),
+        callout(
+            tr(
+                "<b>Этап 06.</b> Маршрут DELETE /api/reports/{report_id}: 204 после "
+                "удаления, 404 для неизвестного UUID; тест, что следующий GET даёт 404, "
+                "а GET-маршруты по-прежнему не могут писать.",
+                "<b>Stage 06.</b> A DELETE /api/reports/{report_id} route: 204 after "
+                "deletion, 404 for an unknown UUID; a test that the next GET is 404 "
+                "and GET routes still cannot write.",
+            ),
+            BLUE,
+            BLUE_L,
+        ),
     ]
 
-    # 34. Verification results
+    # Verification results
     environment = verification["environment"]
     section(
         story,
-        34,
+        number_of("Итоги проверки"),
         tr(
             f"Дата проверки: {verification['checked_at']}; база рабочего дерева "
             f"{verification['base_commit']}.",
@@ -714,10 +770,14 @@ def build_story(verification, dependencies, lock_packages, facts, counts):
         tight_table(
             [tr("Запрос", "Request"), tr("Код", "Code"), tr("Тело", "Body")],
             [
-                [mono(item["request"]), escape(item["status"]), mono(loc(item["body"]))]
+                [
+                    mono(loc(item["request"])),
+                    escape(item["status"]),
+                    mono(loc(item["body"])),
+                ]
                 for item in verification["http"]
             ],
-            [96, 140, W - 236],
+            [168, 100, W - 268],
         ),
         Spacer(1, 8),
         callout(
