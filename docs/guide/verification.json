@@ -1,7 +1,7 @@
 {
-  "checked_at": "2026-10-20",
-  "base_commit": "1c24ce9 + worktree",
-  "stage": 3,
+  "checked_at": "2026-10-21",
+  "base_commit": "3624050",
+  "stage": 4,
   "environment": {
     "os": {
       "ru": "macOS, Apple Silicon",
@@ -13,13 +13,13 @@
     "postgres": "17"
   },
   "tests": {
-    "total": 106,
-    "unit": 52,
-    "integration": 54,
-    "passed": 106,
+    "total": 158,
+    "unit": 86,
+    "integration": 72,
+    "passed": 158,
     "failed": 0,
     "skipped": 0,
-    "seconds": 2.82
+    "seconds": 3.13
   },
   "checks": [
     {
@@ -27,10 +27,10 @@
         "ru": "Тесты",
         "en": "Tests"
       },
-      "command": "CI=true TEST_DATABASE_URL=... .venv/bin/pytest -q",
+      "command": "CI=true TEST_DATABASE_URL=... uv run pytest",
       "result": {
-        "ru": "106 passed: 52 unit + 54 integration; 2.82 с",
-        "en": "106 passed: 52 unit + 54 integration; 2.82 s"
+        "ru": "158 passed: 86 unit + 72 integration",
+        "en": "158 passed: 86 unit + 72 integration"
       },
       "status": "pass"
     },
@@ -39,7 +39,7 @@
         "ru": "Линтер",
         "en": "Lint"
       },
-      "command": ".venv/bin/ruff check .",
+      "command": "uv run ruff check .",
       "result": {
         "ru": "All checks passed",
         "en": "All checks passed"
@@ -51,7 +51,7 @@
         "ru": "Формат",
         "en": "Format"
       },
-      "command": ".venv/bin/ruff format --check .",
+      "command": "uv run ruff format --check .",
       "result": {
         "ru": "Все Python-файлы и блоки Markdown",
         "en": "All Python files and Markdown blocks"
@@ -63,10 +63,10 @@
         "ru": "Типы",
         "en": "Types"
       },
-      "command": ".venv/bin/mypy app tests migrations",
+      "command": "uv run mypy app tests migrations",
       "result": {
-        "ru": "Нет ошибок в 30 исходных файлах",
-        "en": "No issues in 30 source files"
+        "ru": "Нет ошибок в 37 исходных файлах",
+        "en": "No issues in 37 source files"
       },
       "status": "pass"
     },
@@ -75,7 +75,7 @@
         "ru": "Миграции",
         "en": "Migrations"
       },
-      "command": "Alembic upgrade head / check / downgrade base",
+      "command": "alembic upgrade head · check · downgrade base",
       "result": {
         "ru": "Схема 0001; расхождений с моделями нет",
         "en": "Schema 0001; no model drift"
@@ -84,37 +84,73 @@
     },
     {
       "name": {
-        "ru": "Воспроизводимость",
-        "en": "Reproducibility"
+        "ru": "Чистый клон",
+        "en": "Clean clone"
       },
-      "command": "generate_dataset(42, 20000) + export twice",
+      "command": "git clone → uv sync --locked → CI steps",
       "result": {
-        "ru": "Все 8 файлов побайтово совпали",
-        "en": "All 8 files match byte for byte"
+        "ru": "Коммит 3624050: все шаги CI, 158 passed",
+        "en": "Commit 3624050: every CI step, 158 passed"
       },
       "status": "pass"
     },
     {
       "name": {
-        "ru": "Полный импорт",
-        "en": "Full import"
+        "ru": "Полный набор",
+        "en": "Full dataset"
       },
-      "command": "python -m app.data.load --input data/demo",
+      "command": "python -m app.data.load · app.data.quality",
       "result": {
-        "ru": "20 000 заказов; повторный запуск: exit 1, данные сохранены",
-        "en": "20,000 orders; repeat run: exit 1, data preserved"
+        "ru": "20 000 заказов в отдельной базе *_test; 0 нарушений",
+        "en": "20,000 orders in a separate *_test database; 0 violations"
       },
       "status": "pass"
     },
     {
       "name": {
-        "ru": "Качество данных",
-        "en": "Data quality"
+        "ru": "Учебный набор",
+        "en": "Sample fixture"
       },
-      "command": "python -m app.data.quality",
+      "command": "python -m app.analytics (Oct vs Sep)",
       "result": {
-        "ru": "0 нарушений во всех четырёх проверках",
-        "en": "0 violations in all four checks"
+        "ru": "−291 500.00 (−94.34%); вклады 102.92 / 3.26 / −6.17%",
+        "en": "−291,500.00 (−94.34%); shares 102.92 / 3.26 / −6.17%"
+      },
+      "status": "pass"
+    },
+    {
+      "name": {
+        "ru": "Аналитика A01",
+        "en": "Analytics A01"
+      },
+      "command": "python -m app.analytics (Sep vs Aug)",
+      "result": {
+        "ru": "Выручка −26.18%; насосы 83.75% падения",
+        "en": "Net revenue −26.18%; pumps 83.75% of the decline"
+      },
+      "status": "pass"
+    },
+    {
+      "name": {
+        "ru": "Аналитика A03",
+        "en": "Analytics A03"
+      },
+      "command": "python -m app.analytics (Jan–Sep)",
+      "result": {
+        "ru": "Возвраты июля 132 586 941.37 при 0.8–1.7 млн в другие месяцы",
+        "en": "July refunds 132,586,941.37 vs 0.8–1.7 million in other months"
+      },
+      "status": "pass"
+    },
+    {
+      "name": {
+        "ru": "Скорость CLI",
+        "en": "CLI speed"
+      },
+      "command": "time python -m app.analytics",
+      "result": {
+        "ru": "0.2–0.35 с на вызов вместе с запуском Python",
+        "en": "0.2–0.35 s per call including Python start-up"
       },
       "status": "pass"
     },
@@ -123,7 +159,7 @@
         "ru": "Lock-файл",
         "en": "Lock file"
       },
-      "command": "UV_CACHE_DIR=/tmp/ai-data-analyst-uv-cache uv lock --check --offline",
+      "command": "uv lock --check",
       "result": {
         "ru": "45 пакетов; новых зависимостей нет",
         "en": "45 packages; no new dependencies"
@@ -164,22 +200,22 @@
   "remote_ci": {
     "status": "not_verified",
     "detail": {
-      "ru": "Этап 03 проверен локально в рабочем дереве поверх 1c24ce9. Коммит и push не выполнялись; удалённый GitHub Actions для этих изменений не запускался.",
-      "en": "Stage 03 was checked locally in the working tree based on 1c24ce9. No commit or push was performed; remote GitHub Actions was not run for these changes."
+      "ru": "Коммиты до cd3957f (этап 03) отправлены в main; коммиты этапа 04 ещё не отправлены. Результат GitHub Actions пользователь пока не подтвердил: репозиторий приватный.",
+      "en": "Commits up to cd3957f (Stage 03) were pushed to main; the Stage 04 commits are not pushed yet. The user has not confirmed the GitHub Actions result yet: the repository is private."
     }
   },
   "remaining": [
     {
-      "ru": "Этап 04: детерминированное аналитическое ядро — выручка, заказы, сравнения периодов и вклады категорий.",
-      "en": "Stage 04: deterministic analytics core — revenue, orders, period comparisons and category contributions."
+      "ru": "Отправить коммиты этапа 04 и подтвердить зелёное задание «Lint, types and tests» в Actions.",
+      "en": "Push the Stage 04 commits and confirm a green “Lint, types and tests” job in Actions."
     },
     {
-      "ru": "После отдельного commit/push подтвердить результат GitHub Actions; локальный прогон не заменяет удалённый CI.",
-      "en": "After a separate commit/push, confirm GitHub Actions; local checks do not replace remote CI."
+      "ru": "Этап 05: статистический поиск аномалий и Isolation Forest на точных показателях этапа 04; оценка по ground_truth.json.",
+      "en": "Stage 05: statistical anomaly detection and Isolation Forest on the exact Stage 04 metrics, evaluated against ground_truth.json."
     },
     {
-      "ru": "Данные синтетические; причинная связь аномалий и производительность приложения на реальных данных не подтверждены.",
-      "en": "Data is synthetic; causal relationships between anomalies and application performance on real data are not established."
+      "ru": "Данные синтетические; вклады объясняют арифметику изменения, а не причину.",
+      "en": "The data is synthetic; contributions explain the arithmetic of change, not its cause."
     }
   ],
   "dataset": {
@@ -206,12 +242,29 @@
   },
   "pdf": {
     "pages": {
-      "ru": 31,
-      "en": 31
+      "ru": 35,
+      "en": 35
     },
     "visual_review": {
-      "ru": "Все страницы обеих версий просмотрены; новые разделы и итоги дополнительно проверены крупно.",
-      "en": "Every page in both versions was reviewed; new sections and final results were also inspected at full size."
+      "ru": "Все страницы обеих версий отрендерены; новые разделы 24–26, страница полного набора, обложка, CI и итоги проверены крупно.",
+      "en": "Every page in both versions was rendered; new sections 24–26, the full-dataset page, the cover, CI and results were inspected at full size."
+    }
+  },
+  "analytics": {
+    "sample_oct_vs_sep": {
+      "net_change": "-291500.00",
+      "percent": "-94.34",
+      "shares": {
+        "pumps": "102.92",
+        "sensors": "3.26",
+        "valves": "-6.17"
+      }
+    },
+    "demo_sep_vs_aug": {
+      "net_change": "-165497371.86",
+      "percent": "-26.18",
+      "pumps_share": "83.75",
+      "july_refunds": "132586941.37"
     }
   }
 }

@@ -2,7 +2,7 @@
 
 [← README](../../README.md) · [All documentation](../../README.md#documentation)
 
-Endpoints available after Stage 02 and how to call them. Start the database and the server with the [quickstart](quickstart.md) first. Metrics and analytics endpoints (`/api/metrics/*`, `/api/analytics/*`) are added in Stage 06.
+Endpoints available after Stage 02 and how to call them. Start the database and the server with the [quickstart](quickstart.md) first. Stage 04 metrics are available through the read-only [analytics CLI](analytics.md), without starting this server. Metrics and analytics HTTP endpoints (`/api/metrics/*`, `/api/analytics/*`) are added in Stage 06.
 
 ## Endpoints
 

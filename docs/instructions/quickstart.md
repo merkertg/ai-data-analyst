@@ -2,7 +2,7 @@
 
 [← README](../../README.md) · [All documentation](../../README.md#documentation)
 
-Install uv, start PostgreSQL, apply migrations, start the API and check that it is ready. Detailed walkthroughs in Russian are in the [Stage 01](../STAGE_01.md), [Stage 02](../STAGE_02.md) and [Stage 03](../STAGE_03.md) guides.
+Install uv, start PostgreSQL, apply migrations, start the API and check that it is ready. Detailed walkthroughs in Russian are in the [Stage 01](../STAGE_01.md), [Stage 02](../STAGE_02.md), [Stage 03](../STAGE_03.md) and [Stage 04](../STAGE_04.md) guides.
 
 ## Requirements
 
@@ -19,7 +19,7 @@ Run all commands from the project root, the directory containing `pyproject.toml
 | --- | --- | --- |
 | Python on the host | `uv sync --locked`, Python 3.12 | same |
 | PostgreSQL | Docker Desktop | Docker Engine or Desktop |
-| Verification | Local checks recorded in VERIFICATION.md | Workflow targets `ubuntu-24.04`; remote result is not yet confirmed |
+| Verification | Local checks recorded in VERIFICATION.md | Workflow targets `ubuntu-24.04`; see VERIFICATION.md for the confirmed remote result |
 | Shell for the guides | zsh or Bash | Bash |
 
 Windows is not checked yet.
@@ -67,6 +67,19 @@ Generation requires a new or empty output directory. Loading requires all six do
 For the small Stage 02 SQL exercise, use `uv run python -m app.db.sample` instead on a separate empty database. Do not load the sample before the full demo in the same database.
 
 See [Database](database.md) for psql, SQL examples and schema changes.
+
+## Calculate analytics
+
+With a dataset loaded, calculate September and compare it with August:
+
+```bash
+uv run python -m app.analytics \
+  --start 2026-09-01 --end 2026-10-01 \
+  --compare-start 2026-08-01 --compare-end 2026-09-01 \
+  --dimension category
+```
+
+The read-only CLI prints exact JSON metrics, monthly buckets, comparisons and contributions; monetary values are strings. Dates use a half-open Moscow interval. Use `--dimension region` for regional contributions; omit both comparison arguments for a summary and monthly series. No API server is required. See [Analytics](analytics.md) for definitions and manual sample answers.
 
 ## Start the API
 

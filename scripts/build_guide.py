@@ -40,6 +40,7 @@ from guide.toc import (
     STAGE_01_SECTIONS,
     STAGE_02_SECTIONS,
     STAGE_03_SECTIONS,
+    STAGE_04_SECTIONS,
 )
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
@@ -86,8 +87,8 @@ def cover_page(c, doc):
         left,
         PAGE_H - 180,
         tr(
-            f"Этапы 01–{STAGES_DONE:02d} · API, база и данные",
-            f"Stages 01–{STAGES_DONE:02d} · API, database and data",
+            f"Этапы 01–{STAGES_DONE:02d} · API, база и аналитика",
+            f"Stages 01–{STAGES_DONE:02d} · API, database and analytics",
         ),
     )
     c.setFont("PT", 14)
@@ -96,10 +97,11 @@ def cover_page(c, doc):
     for line in simpleSplit(
         tr(
             "Наглядное руководство: окружение uv, API на FastAPI, PostgreSQL в Docker, "
-            "миграции Alembic, SQL, воспроизводимые данные, проверки качества, "
+            "миграции Alembic, SQL, воспроизводимые данные, точная аналитика, "
             "тесты и CI.",
             "A visual guide: the uv environment, a FastAPI API, PostgreSQL in Docker, "
-            "Alembic migrations, SQL, reproducible data, quality checks, tests and CI.",
+            "Alembic migrations, SQL, reproducible data, exact analytics, "
+            "tests and CI.",
         ),
         "PT",
         14,
@@ -190,10 +192,12 @@ def cover_page(c, doc):
         tr(
             f"01: {STAGE_01_SECTIONS[0]}–{STAGE_01_SECTIONS[-1]} · "
             f"02: {STAGE_02_SECTIONS[0]}–{STAGE_02_SECTIONS[-1]} · "
-            f"03: {STAGE_03_SECTIONS[0]}–{STAGE_03_SECTIONS[-1]}",
+            f"03: {STAGE_03_SECTIONS[0]}–{STAGE_03_SECTIONS[-1]} · "
+            f"04: {STAGE_04_SECTIONS[0]}–{STAGE_04_SECTIONS[-1]}",
             f"01: {STAGE_01_SECTIONS[0]}–{STAGE_01_SECTIONS[-1]} · "
             f"02: {STAGE_02_SECTIONS[0]}–{STAGE_02_SECTIONS[-1]} · "
-            f"03: {STAGE_03_SECTIONS[0]}–{STAGE_03_SECTIONS[-1]}",
+            f"03: {STAGE_03_SECTIONS[0]}–{STAGE_03_SECTIONS[-1]} · "
+            f"04: {STAGE_04_SECTIONS[0]}–{STAGE_04_SECTIONS[-1]}",
         ),
     )
     c.setFont("PT", 9.3)
@@ -207,9 +211,11 @@ def cover_page(c, doc):
             c.setFillColor(HEX("#5EEAD4"))
         elif number in STAGE_03_SECTIONS:
             c.setFillColor(HEX("#C4B5FD"))
+        elif number in STAGE_04_SECTIONS:
+            c.setFillColor(HEX("#FDBA74"))
         else:
             c.setFillColor(HEX("#94A3B8"))
-        c.drawString(MARGIN + column * 250, 300 - row * 14.5, f"{number}  {tr(ru, en)}")
+        c.drawString(MARGIN + column * 250, 300 - row * 12.8, f"{number}  {tr(ru, en)}")
     c.setStrokeColor(HEX("#334155"))
     c.line(MARGIN, 82, PAGE_W - MARGIN, 82)
     c.setFillColor(HEX("#64748B"))
@@ -229,8 +235,8 @@ def cover_page(c, doc):
         MARGIN,
         53,
         tr(
-            "Этапы: docs/STAGE_01.md–STAGE_03.md; отчёт: docs/VERIFICATION.md",
-            "Stage guides: docs/STAGE_01.md–STAGE_03.md; "
+            "Этапы: docs/STAGE_01.md–STAGE_04.md; отчёт: docs/VERIFICATION.md",
+            "Stage guides: docs/STAGE_01.md–STAGE_04.md; "
             "instructions: docs/instructions/",
         ),
     )
@@ -351,13 +357,13 @@ def build_guide(output, verification, lang):
             bottomMargin=17 * mm,
             title="AI Data Analyst - "
             + tr(
-                f"этапы 01–{STAGES_DONE:02d}: API, база и данные",
-                f"stages 01–{STAGES_DONE:02d}: API, database and data",
+                f"этапы 01–{STAGES_DONE:02d}: API, база и аналитика",
+                f"stages 01–{STAGES_DONE:02d}: API, database and analytics",
             ),
             author="AI Data Analyst",
             subject=tr(
-                "uv, FastAPI, PostgreSQL, SQL, данные, качество, тесты и CI",
-                "uv, FastAPI, PostgreSQL, SQL, data, quality, tests and CI",
+                "uv, FastAPI, PostgreSQL, SQL, данные, аналитика, тесты и CI",
+                "uv, FastAPI, PostgreSQL, SQL, data, analytics, tests and CI",
             ),
             lang=lang,
         )

@@ -337,11 +337,11 @@ def add_stage03(story):
             tr(
                 "<b>Интеграционные тесты:</b> только TEST_DATABASE_URL и база с "
                 "суффиксом _test. Базу разработки из .env тесты не используют. "
-                "Фактические результаты — в разделе 28 и docs/VERIFICATION.md; "
+                "Фактические результаты — в разделе 31 и docs/VERIFICATION.md; "
                 "удалённый GitHub Actions подтверждается отдельно.",
                 "<b>Integration tests:</b> TEST_DATABASE_URL only, with a database "
                 "name ending in _test. Tests never use the development .env "
-                "database. Actual results are in section 28 and "
+                "database. Actual results are in section 31 and "
                 "docs/VERIFICATION.md; remote GitHub Actions is confirmed separately.",
             )
         ),

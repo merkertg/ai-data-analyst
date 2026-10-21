@@ -36,7 +36,7 @@ from guide.layout import (
 )
 
 # Сколько этапов курса уже выполнено: зелёные карточки дорожной карты.
-STAGES_DONE = 3
+STAGES_DONE = 4
 
 
 def roadmap(c, w, h):
@@ -1206,7 +1206,12 @@ def ci_pipeline(c, w, h):
         ("alembic upgrade", "head", TEAL_L, TEAL),
         ("alembic check", tr("модели = миграции", "models = migrations"), TEAL_L, TEAL),
         ("downgrade base", tr("и снова upgrade", "and upgrade again"), TEAL_L, TEAL),
-        ("pytest", tr("60 тестов, CI=true", "60 tests, CI=true"), GREEN_L, GREEN),
+        (
+            "pytest",
+            tr("unit + integration, CI=true", "unit + integration, CI=true"),
+            GREEN_L,
+            GREEN,
+        ),
         (
             tr("Итог", "Result"),
             tr("всё PASS:\nзадание зелёное", "all PASS:\njob is green"),

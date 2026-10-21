@@ -8,9 +8,9 @@ The application answers such questions by running a short investigation: it sele
 
 The project uses fictional IndustrialFlow data generated with a fixed seed.
 
-## Current implementation: Stages 01–03
+## Current implementation: Stages 01–04
 
-The application has a runnable HTTP foundation, a PostgreSQL schema created by versioned migrations, reproducible generated data, an atomic loader and read-only cross-table quality checks. There is no analytics service or LLM agent yet.
+The application has a runnable HTTP foundation, a PostgreSQL schema created by versioned migrations, reproducible generated data, an atomic loader and read-only cross-table quality checks. A read-only analytics CLI and reusable functions calculate exact financial metrics, comparisons and contributions. The metrics HTTP API and LLM agent follow in later stages.
 
 ```text
 HTTP client → Uvicorn → FastAPI
@@ -24,6 +24,9 @@ Sample CLI (python -m app.db.sample) → small dataset with known answers
 Generator (python -m app.data.generate) → CSV + manifest + evaluation ground truth
 Loader (python -m app.data.load) → one transaction, empty domain tables only
 Quality CLI (python -m app.data.quality) → read-only cross-table checks
+Analytics CLI (python -m app.analytics) → read-only repeatable-read transaction
+  ├─ PostgreSQL → independent sales, order-count and refund aggregates
+  └─ Python Decimal → metrics, comparisons, monthly buckets and contributions
 sql/*.sql → hand-written queries, executed by integration tests
 
 Settings: environment variables → .env → defaults in app/config.py
@@ -41,7 +44,7 @@ Settings: environment variables → .env → defaults in app/config.py
 
 | Component | Choice | Responsibility |
 | --- | --- | --- |
-| Language | Python 3.12 | API and database code now; analytics and agent later |
+| Language | Python 3.12 | API, database and deterministic analytics; agent later |
 | API | FastAPI | HTTP routing, validation, generated OpenAPI |
 | ASGI server | Uvicorn | Local HTTP serving |
 | Database | PostgreSQL 17 in Docker Compose | Persistent records, relational links, integrity rules |
@@ -53,7 +56,7 @@ Settings: environment variables → .env → defaults in app/config.py
 | Code checks | Ruff, mypy (strict, Pydantic plugin) | Lint, formatting, import order, static types |
 | CI | GitHub Actions with a PostgreSQL service | The same checks on every push to `main` and pull request |
 
-The Stage 03 generator uses only standard-library `random.Random`, `csv`, `hashlib` and exact `Decimal` arithmetic; it needs no NumPy or Faker. Planned additions: Pandas and DuckDB for analytics (Stage 04); scikit-learn for anomaly detection (Stage 05); the OpenAI API for tool calling and structured outputs (Stage 07); Streamlit and Plotly (Stage 08); an application Docker image (Stage 10).
+The Stage 03 generator uses only standard-library `random.Random`, `csv`, `hashlib` and exact `Decimal` arithmetic; it needs no NumPy or Faker. Stage 04 uses PostgreSQL aggregation and Python `Decimal` without new dependencies; Pandas and DuckDB are deferred until a concrete use case requires them ([ADR 0004](adr/0004-deterministic-analytics-core.md)). Planned additions: scikit-learn for anomaly detection (Stage 05); the OpenAI API for tool calling and structured outputs (Stage 07); Streamlit and Plotly (Stage 08); an application Docker image (Stage 10).
 
 ## Data model
 
@@ -93,11 +96,16 @@ Fixed before any data exists, so that every later stage uses the same rules:
 - Net revenue = paid sales − processed refunds.
 - Average order value = paid sales / paid orders, before refunds.
 - A line amount is `ROUND(quantity * unit_price * (1 - discount), 2)`; an order total is the sum of its lines.
-- Reporting periods are calendar months in `Europe/Moscow` time; timestamps are stored as `timestamptz`.
+- A period is a non-empty half-open date interval `[start, end)` interpreted at midnight in `Europe/Moscow`; timestamps are stored as `timestamptz`. `Period.month(year, month)` creates a calendar month. Monthly series include empty months and clip first and last buckets to the requested interval; at most 120 calendar buckets are accepted.
+- Counts come from paid orders directly; sales and refunds are aggregated independently so multiple order lines or refunds cannot multiply money or order counts.
+- Average order value is `None` when no orders were paid, including refund-only periods; sales, refunds, net revenue and order count are zero for an empty period.
+- Comparisons use `current - previous`; percent change is `(current - previous) / abs(previous) * 100`, rounded to two decimal places with `ROUND_HALF_UP`. A zero previous value gives `None`, and an unavailable AOV gives `None` for its comparison. Period lengths are not normalised.
+- Category or region contributions use signed group net-revenue deltas divided by the total delta. Zero total change gives `None`; percentages may exceed 100%, be negative, and differ from a 100% sum after rounding. Both periods contribute group names, including refund-only groups. Results sort by delta ascending, then name.
+- JSON preserves monetary values as decimal strings and unavailable values as `null`. The CLI reads all requested results inside one read-only `REPEATABLE READ` transaction.
 
 ## Verification and CI
 
-Unit tests cover HTTP responses, settings, schema structure, deterministic data generation and bundle handling. Integration tests use a real PostgreSQL database whose name must end with `_test`: migrations, readiness, constraints, exact money and time round trips, SQL examples, data loading and cross-table quality rules. Tests use `TEST_DATABASE_URL` only and never the development `.env` address. Ruff checks style and formatting; mypy runs in strict mode over `app`, `tests` and `migrations`. GitHub Actions repeats the configured checks on `ubuntu-24.04` with a PostgreSQL service, SHA-pinned actions and read-only permissions. Actual counts, results and limits belong in [VERIFICATION.md](VERIFICATION.md); local results do not establish a successful remote run. The workflow is explained in [CI_CD.md](CI_CD.md).
+Unit tests cover HTTP responses, settings, schema structure, deterministic data generation and bundle handling. Integration tests use a real PostgreSQL database whose name must end with `_test`: migrations, readiness, constraints, exact money and time round trips, SQL examples, data loading, cross-table quality rules and exact analytics results against manual and generated fixtures. Tests use `TEST_DATABASE_URL` only and never the development `.env` address. Ruff checks style and formatting; mypy runs in strict mode over `app`, `tests` and `migrations`. GitHub Actions repeats the configured checks on `ubuntu-24.04` with a PostgreSQL service, SHA-pinned actions and read-only permissions. Actual counts, results and limits belong in [VERIFICATION.md](VERIFICATION.md); local results do not establish a successful remote run. The workflow is explained in [CI_CD.md](CI_CD.md).
 
 ## Decisions
 
@@ -107,6 +115,7 @@ Architecture decisions are recorded as ADRs in [adr/](adr/):
 - [ADR 0002: PostgreSQL schema, integrity rules and migrations](adr/0002-postgresql-schema-and-migrations.md) — six normalised tables, integrity enforced by PostgreSQL, `NUMERIC`/`Decimal` money, `timestamptz` with Moscow reporting months, Alembic as the only way to build the schema, `/ready`.
 
 - [ADR 0003: Reproducible demo data and safe loading](adr/0003-reproducible-demo-data-and-safe-loading.md) — standard-library seeded generation, exact monetary serialization, manifest integrity, atomic loading and quality checks.
+- [ADR 0004: Deterministic analytics core](adr/0004-deterministic-analytics-core.md) — explicit period semantics, independent SQL aggregates, exact comparisons, signed contributions and a snapshot-consistent CLI without Pandas or DuckDB.
 
 ## Architecture
 
@@ -135,4 +144,4 @@ The five injected scenarios are valid business events, not deliberately invalid 
 
 ## Next steps
 
-Stage 04 implements the deterministic analytics core over the generated database: paid sales, processed refunds, net revenue, paid order counts, average order value, month comparisons and category or regional contributions. The metric definitions above remain the shared contract. Anomaly detection and the LLM agent follow in later stages.
+Stage 05 adds anomaly detection using the Stage 04 metric contract. Statistical signals and Isolation Forest will produce evidence to investigate; they must not infer causation from coincident events or read `ground_truth.json` at runtime. The metrics REST API is Stage 06, followed by the LLM agent in Stage 07.

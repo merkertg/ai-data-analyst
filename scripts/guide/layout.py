@@ -445,7 +445,11 @@ def stat_tiles(c, x, y, w, h, items, fill, value_color, label_color, edge=None):
         left = x + index * (width + gap)
         rbox(c, left, y, width, h, fill, edge, r=8, lw=0.8)
         c.setFillColor(value_color)
-        c.setFont("PT-Bold", 22)
+        # Длинное значение («158 / 158») уменьшается, чтобы не касаться краёв.
+        size = 22.0
+        while size > 14 and pdfmetrics.stringWidth(value, "PT-Bold", size) > width - 16:
+            size -= 1
+        c.setFont("PT-Bold", size)
         c.drawCentredString(left + width / 2, y + h - 30, value)
         lines_in(
             c,

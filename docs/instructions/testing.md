@@ -44,6 +44,8 @@ Fixtures: `migrated_engine` builds the schema once per run with `alembic downgra
 | `tests/integration/test_queries.py` | The four files in `sql/` return hand-computed results on the sample data |
 | `tests/test_demo_data.py`, `tests/test_data_quality.py` | Seeded generation, equal bundle bytes, money, scenarios, bundle validation and quality report behaviour |
 | `tests/integration/test_demo_data.py`, `tests/integration/test_data_quality.py` | Empty-table loading, transaction rollback, existing-data refusal and cross-table quality violations |
+| `tests/test_analytics_models.py`, `tests/test_analytics_cli.py` | Moscow periods, validation, exact/undefined percentage changes, dimensions, safe errors and JSON decimal serialization |
+| `tests/integration/test_analytics.py` | Manual sample metrics, line-first rounding, independent sales/refund counts, Moscow boundaries, empty/partial months, comparisons, signed contributions and read-only behaviour |
 
 Useful options:
 
@@ -60,6 +62,17 @@ uv run --locked pytest -x
 See [Demo data](demo-data.md) for the three CLI commands and their expected behaviour. Generation requires no database. The loader validates a complete bundle and writes only into empty domain tables in one transaction. The quality CLI is read-only; its exit code is `0` for passing checks and `1` for violations. Business scenarios A01–A05 are valid rows and must pass the quality checks.
 
 For a manual check, generate two bundles in different new directories with the same seed and order count, then compare them with `diff -r`. Run destructive fixture and rollback tests only through the integration suite, with `TEST_DATABASE_URL` ending in `_test`.
+
+## Analytics
+
+See [Analytics](analytics.md) for CLI examples and metric definitions. The small `app.db.sample` fixture has hand-calculated September and October answers; it is different from the generated bundle. Tests cover zero baselines, negative revenue, refund-only periods, multiple refunds, boundary timestamps, clipped monthly buckets and contribution reconciliation. CLI tests also verify read-only `REPEATABLE READ` configuration and exact JSON values.
+
+```bash
+uv run pytest tests/test_analytics_models.py tests/test_analytics_cli.py
+uv run pytest tests/integration/test_analytics.py
+```
+
+These test commands follow the same `_test` database safety rules above. They never use the development database for integration fixtures.
 
 ## Migrations
 
