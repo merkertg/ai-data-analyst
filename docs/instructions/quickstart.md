@@ -153,3 +153,13 @@ Settings are read from environment variables, then from `.env`, then from defaul
 Agent time, step, tool and token limits are listed in [AI analyst](agent.md). Changing the provider does not change financial calculations: tools still use SQL and `Decimal`.
 
 Without `DATABASE_URL` the API still starts: `/health` works and `/ready` answers `503`.
+
+## Open the interface (Stage 08)
+
+Keep the API running and open a second terminal at the repository root:
+
+```bash
+uv run python -m streamlit run ui/main.py --server.address 127.0.0.1
+```
+
+Open <http://127.0.0.1:8501>. Dashboard has editable demonstration dates; Load dashboard requests the API. AI analyst submits independent questions, and Reports opens saved snapshots. `UI_API_URL` defaults to `http://127.0.0.1:8000`; the UI needs no database credentials or model key. See [Interface](interface.md) for charts, histories, downloads and errors.

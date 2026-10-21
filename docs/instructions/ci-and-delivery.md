@@ -12,7 +12,7 @@ push to main / pull request / manual run
 Lint, types and tests (ubuntu-24.04, up to 10 minutes)
   service: PostgreSQL 17 (digest-pinned), database industrialflow_test
   checkout → uv 0.12.23 + Python 3.12 → uv sync --locked
-  → ruff check → ruff format --check → mypy app tests migrations
+  → ruff check → ruff format --check → mypy app ui tests migrations
   → alembic upgrade head → alembic check → downgrade base + upgrade head
   → pytest (unit + integration)
 ```
@@ -26,7 +26,7 @@ Lint, types and tests (ubuntu-24.04, up to 10 minutes)
 | Install locked dependencies | `uv sync --locked` | `uv.lock` does not match `pyproject.toml` |
 | Ruff lint | `uv run --locked ruff check .` | Style, import order or common bug patterns |
 | Ruff format | `uv run --locked ruff format --check .` | A Python file or Markdown code block is not formatted |
-| Mypy | `uv run --locked mypy app tests migrations` | A type error in strict mode |
+| Mypy | `uv run --locked mypy app ui tests migrations` | A type error in strict mode |
 | Apply migrations | `uv run --locked alembic upgrade head` | A migration fails on a fresh database |
 | Check models match migrations | `uv run --locked alembic check` | A model changed without a migration |
 | Check downgrade and upgrade | `alembic downgrade base`, then `upgrade head` | A rollback is broken |

@@ -16,6 +16,7 @@ wheels/
 .env
 .env.*
 !.env.example
+.streamlit/secrets.toml
 
 # Служебные файлы редакторов и macOS.
 .DS_Store

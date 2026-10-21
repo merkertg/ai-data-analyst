@@ -1,4 +1,4 @@
-"""Assemble the overview, Stages 01–07, CI, reference pages and results."""
+"""Assemble the overview, Stages 01–08, CI, reference pages and results."""
 
 from html import escape
 
@@ -41,6 +41,7 @@ from guide.stage04 import add_stage04
 from guide.stage05 import add_stage05
 from guide.stage06 import add_stage06
 from guide.stage07 import add_stage07
+from guide.stage08 import add_stage08
 from guide.toc import number_of, section
 
 # Плотные ячейки для таблиц итогов: страница итогов помещается целиком.
@@ -99,7 +100,8 @@ def build_story(verification, dependencies, lock_packages, facts, counts):
                 f"Готовы этапы 01–{STAGES_DONE:02d}: каркас API с проверками и CI, "
                 "база PostgreSQL, данные, проверки качества, точная аналитика, "
                 "поиск аномалий, REST\u00a0API и AI-агент с инструментами, "
-                "проверкой доказательств и историей запусков.",
+                "проверкой доказательств и историей запусков; интерфейс Streamlit "
+                "с показателями, графиками и сохранёнными отчётами.",
                 "<b>AI Data Analyst</b> is an AI analyst for <b>IndustrialFlow</b>, a "
                 "fictional company selling pumps, compressors, valves and sensors. A "
                 "manager asks in plain language; the agent calls analytics tools, "
@@ -107,7 +109,8 @@ def build_story(verification, dependencies, lock_packages, facts, counts):
                 f"Stages 01–{STAGES_DONE:02d} are done: an API foundation with checks "
                 "and CI, a PostgreSQL database, reproducible data, quality checks, "
                 "exact analytics, anomaly detection, a REST API and an AI agent "
-                "with tools, evidence checks and run history.",
+                "with tools, evidence checks and run history; a Streamlit interface "
+                "with metrics, charts and saved reports.",
             )
         ),
         Spacer(1, 10),
@@ -201,11 +204,11 @@ def build_story(verification, dependencies, lock_packages, facts, counts):
         callout(
             tr(
                 "<b>Границы проверки:</b> агент проверен с mock и поддельным SDK, "
-                "живой вызов OpenAI ещё не проверен. Интерфейс Streamlit (08) "
-                "и авторизация API (09) — следующие этапы.",
+                "живой вызов OpenAI ещё не проверен. Интерфейс Streamlit работает "
+                "с тем же API; авторизация (09) и публикация (10) ещё впереди.",
                 "<b>Verification limits:</b> the agent was tested with mock and "
                 "a fake SDK; a live OpenAI call is still untested. The Streamlit UI "
-                "(08) and API authentication (09) are later stages.",
+                "uses the same API; authentication (09) and release (10) come later.",
             ),
             AMBER,
             AMBER_L,
@@ -233,6 +236,7 @@ def build_story(verification, dependencies, lock_packages, facts, counts):
     add_stage05(story)
     add_stage06(story)
     add_stage07(story)
+    add_stage08(story)
 
     # CI on GitHub Actions
     remote = verification["remote_ci"]
@@ -358,6 +362,10 @@ def build_story(verification, dependencies, lock_packages, facts, counts):
             "curl -i http://127.0.0.1:8000/ready",
         ),
         (
+            tr("Запустить интерфейс", "Start the interface"),
+            "uv run python -m streamlit run ui/main.py --server.address 127.0.0.1",
+        ),
+        (
             tr("Выручка через API", "Revenue via the API"),
             "curl '127.0.0.1:8000/api/metrics/revenue?start=2026-09-01&end=2026-10-01'",
         ),
@@ -382,7 +390,7 @@ def build_story(verification, dependencies, lock_packages, facts, counts):
             tr("Линтер и формат", "Lint and format"),
             "uv run ruff check . && uv run ruff format --check .",
         ),
-        (tr("Типы", "Types"), "uv run mypy app tests migrations"),
+        (tr("Типы", "Types"), "uv run mypy app ui tests migrations"),
         (
             tr("Оценка сценариев", "Scenario evaluation"),
             "uv run python -m app.analytics.evaluate --help",

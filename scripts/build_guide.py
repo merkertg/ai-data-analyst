@@ -44,6 +44,7 @@ from guide.toc import (
     STAGE_05_SECTIONS,
     STAGE_06_SECTIONS,
     STAGE_07_SECTIONS,
+    STAGE_08_SECTIONS,
 )
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
@@ -90,8 +91,8 @@ def cover_page(c, doc):
         left,
         PAGE_H - 180,
         tr(
-            f"Этапы 01–{STAGES_DONE:02d} · от базы к AI-агенту",
-            f"Stages 01–{STAGES_DONE:02d} · from data to an AI agent",
+            f"Этапы 01–{STAGES_DONE:02d} · от базы к интерфейсу",
+            f"Stages 01–{STAGES_DONE:02d} · from data to an interface",
         ),
     )
     c.setFont("PT", 14)
@@ -101,10 +102,10 @@ def cover_page(c, doc):
         tr(
             "Наглядное руководство: окружение uv, API на FastAPI, PostgreSQL в Docker, "
             "миграции Alembic, SQL, воспроизводимые данные, аналитика, аномалии, "
-            "REST API, AI-агент с инструментами, тесты и CI.",
+            "REST API, AI-агент с инструментами, Streamlit, графики, тесты и CI.",
             "A visual guide: the uv environment, a FastAPI API, PostgreSQL in Docker, "
             "Alembic migrations, SQL, reproducible data, analytics, anomalies, "
-            "a REST API, an AI agent with tools, tests and CI.",
+            "a REST API, an AI agent with tools, Streamlit, charts, tests and CI.",
         ),
         "PT",
         14,
@@ -115,7 +116,7 @@ def cover_page(c, doc):
 
     # Мини-схема: путь запроса до базы.
     steps = [
-        (tr("Клиент", "Client"), tr("curl или /docs", "curl or /docs")),
+        ("Streamlit", tr("интерфейс :8501", "interface :8501")),
         ("Uvicorn", tr("сервер :8000", "server :8000")),
         ("FastAPI", "/api · /ready"),
         ("SQLAlchemy", tr("пул и сессии", "pool and sessions")),
@@ -199,14 +200,16 @@ def cover_page(c, doc):
             f"04: {STAGE_04_SECTIONS[0]}–{STAGE_04_SECTIONS[-1]} · "
             f"05: {STAGE_05_SECTIONS[0]}–{STAGE_05_SECTIONS[-1]} · "
             f"06: {STAGE_06_SECTIONS[0]}–{STAGE_06_SECTIONS[-1]} · "
-            f"07: {STAGE_07_SECTIONS[0]}–{STAGE_07_SECTIONS[-1]}",
+            f"07: {STAGE_07_SECTIONS[0]}–{STAGE_07_SECTIONS[-1]} · "
+            f"08: {STAGE_08_SECTIONS[0]}–{STAGE_08_SECTIONS[-1]}",
             f"01: {STAGE_01_SECTIONS[0]}–{STAGE_01_SECTIONS[-1]} · "
             f"02: {STAGE_02_SECTIONS[0]}–{STAGE_02_SECTIONS[-1]} · "
             f"03: {STAGE_03_SECTIONS[0]}–{STAGE_03_SECTIONS[-1]} · "
             f"04: {STAGE_04_SECTIONS[0]}–{STAGE_04_SECTIONS[-1]} · "
             f"05: {STAGE_05_SECTIONS[0]}–{STAGE_05_SECTIONS[-1]} · "
             f"06: {STAGE_06_SECTIONS[0]}–{STAGE_06_SECTIONS[-1]} · "
-            f"07: {STAGE_07_SECTIONS[0]}–{STAGE_07_SECTIONS[-1]}",
+            f"07: {STAGE_07_SECTIONS[0]}–{STAGE_07_SECTIONS[-1]} · "
+            f"08: {STAGE_08_SECTIONS[0]}–{STAGE_08_SECTIONS[-1]}",
         ),
     )
     c.setFont("PT", 8.6)
@@ -228,9 +231,11 @@ def cover_page(c, doc):
             c.setFillColor(HEX("#FDE68A"))
         elif number in STAGE_07_SECTIONS:
             c.setFillColor(HEX("#67E8F9"))
+        elif number in STAGE_08_SECTIONS:
+            c.setFillColor(HEX("#F9A8D4"))
         else:
             c.setFillColor(HEX("#94A3B8"))
-        # Twenty-one rows stay above the footer; long titles retain two columns.
+        # Twenty-two rows stay above the footer; long titles retain two columns.
         c.drawString(MARGIN + column * 250, 300 - row * 9.7, f"{number}  {tr(ru, en)}")
     c.setStrokeColor(HEX("#334155"))
     c.line(MARGIN, 82, PAGE_W - MARGIN, 82)
@@ -374,13 +379,15 @@ def build_guide(output, verification, lang):
             bottomMargin=17 * mm,
             title="AI Data Analyst - "
             + tr(
-                f"этапы 01–{STAGES_DONE:02d}: база, аналитика и AI-агент",
-                f"stages 01–{STAGES_DONE:02d}: data, analytics and an AI agent",
+                f"этапы 01–{STAGES_DONE:02d}: аналитика, AI-агент и Streamlit",
+                f"stages 01–{STAGES_DONE:02d}: analytics, an AI agent and Streamlit",
             ),
             author="AI Data Analyst",
             subject=tr(
-                "uv, FastAPI, PostgreSQL, SQL, аналитика, tool calling, тесты и CI",
-                "uv, FastAPI, PostgreSQL, SQL, analytics, tool calling, tests and CI",
+                "uv, FastAPI, PostgreSQL, SQL, аналитика, tool calling, "
+                "Streamlit, тесты и CI",
+                "uv, FastAPI, PostgreSQL, SQL, analytics, tool calling, "
+                "Streamlit, tests and CI",
             ),
             lang=lang,
         )

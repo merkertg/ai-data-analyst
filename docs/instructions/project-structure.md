@@ -114,7 +114,7 @@ pyproject.toml           # Project metadata, dependencies, pytest/Ruff/mypy/uv s
 uv.lock                  # Exact versions and hashes of all resolved packages
 ```
 
-The REST API (Stage 06) lives in `app/api/`, the AI analyst (Stage 07) in `app/agents/` and `app/llm/`. Planned additions follow the course plan: `frontend/` in Stage 08, and `tests/evals/`, `tests/security/` in Stage 09.
+The REST API (Stage 06) lives in `app/api/`, the AI analyst (Stage 07) in `app/agents/` and `app/llm/`. The Streamlit interface (Stage 08) lives in `ui/`; it calls the API over HTTP. Planned additions follow the course plan: `tests/evals/` and `tests/security/` in Stage 09.
 
 ## Configuration in pyproject.toml
 
@@ -128,3 +128,7 @@ The REST API (Stage 06) lives in `app/api/`, the AI analyst (Stage 07) in `app/a
 | `[tool.mypy]` | Strict mode with the Pydantic plugin |
 
 The project is an application, not a package: it was created with `uv init --app --no-package`, has no `[build-system]`, and is not installed into `.venv`. The reasons are recorded in [ADR 0001](../adr/0001-application-layout-and-tooling.md); the database decisions are in [ADR 0002](../adr/0002-postgresql-schema-and-migrations.md); generation and safe loading are in [ADR 0003](../adr/0003-reproducible-demo-data-and-safe-loading.md); the deterministic analytics contract is in [ADR 0004](../adr/0004-deterministic-analytics-core.md); anomaly detection and offline coverage limits are in [ADR 0005](../adr/0005-anomaly-detection-and-offline-evaluation.md); the REST API and saved reports are in [ADR 0006](../adr/0006-rest-api-and-saved-reports.md); the AI agent is in [ADR 0007](../adr/0007-ai-agent-tool-calling.md).
+
+## Streamlit interface (Stage 08)
+
+`ui/main.py` renders Dashboard, AI analyst and Reports. `ui/client.py` validates bounded HTTP responses against the shared API schemas; `ui/config.py` reads local UI connection settings. `ui/charts.py` turns results into Plotly charts with exact money labels; `ui/models.py` keeps submitted dashboard and chat snapshots across reruns. `.streamlit/config.toml` configures a loopback server and the theme. Start from the repository root with `uv run python -m streamlit run ui/main.py --server.address 127.0.0.1`; using Python as a module keeps the repository on the import path. See [Interface](interface.md).

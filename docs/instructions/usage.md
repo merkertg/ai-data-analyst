@@ -94,3 +94,7 @@ curl -i "$B/ready"
 | `503 Service Unavailable` | Database unavailable (`{"detail":"Database is not ready"}`); agent settings, tool data or provider unavailable use their own fixed messages |
 
 Database readiness failures use one fixed 503 text so the database address and driver errors do not reach the client. Agent routes also return `413`, `502` and `504`; see [AI analyst](agent.md) for their meaning and when a failure contains `run_id`.
+
+## Streamlit client
+
+The [interface](interface.md) calls these HTTP endpoints without direct database access. Dashboard GET requests use separate snapshots. Save comparison/anomaly report explicitly recomputes through `POST /api/reports`; the UI displays and downloads the returned saved snapshot. Chat questions are independent agent runs; previous visible messages are not model context.

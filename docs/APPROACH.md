@@ -4,11 +4,11 @@
 
 IndustrialFlow, a fictional distributor of industrial equipment (pumps, compressors, valves, sensors), keeps orders, customers, products, refunds and inventory in a relational database. Managers ask questions such as *"Why did revenue drop in September? Which categories and regions contributed most? Are there anomalies?"* Answering them today means a manual round of SQL, a spreadsheet and a written summary.
 
-The application answers such questions by running a short investigation: it selects data through a fixed set of analytics tools, obtains exact calculations and writes a structured report that separates facts, hypotheses and recommendations, with references to tool results. Charts are planned for Stage 08.
+The application answers such questions by running a short investigation: it selects data through a fixed set of analytics tools, obtains exact calculations and writes a structured report that separates facts, hypotheses and recommendations, with references to tool results. The local Streamlit UI shows exact metric labels and interactive Plotly charts from API responses.
 
 The project uses fictional IndustrialFlow data generated with a fixed seed.
 
-## Current implementation: Stages 01–07
+## Current implementation: Stages 01–08
 
 The application has a runnable HTTP foundation, a PostgreSQL schema created by versioned migrations, reproducible generated data, an atomic loader and read-only cross-table quality checks. A read-only analytics CLI and reusable functions calculate exact financial metrics, comparisons and contributions. Anomaly detection adds statistical rules, stockout runs and seeded Isolation Forest candidates, with a separate offline evaluation of injected-scenario coverage. A REST API exposes the same metrics, contributions and anomaly candidates and saves report snapshots. An AI analyst answers natural-language questions through nine read-only tools and returns a structured report. Its evidence references and recognised numeric literals are checked against tool results; this does not establish semantic or causal correctness.
 
@@ -72,7 +72,7 @@ LLM settings: the same sources → app/llm/config.py, read only when the agent r
 | Code checks | Ruff, mypy (strict, Pydantic plugin) | Lint, formatting, import order, static types |
 | CI | GitHub Actions with a PostgreSQL service | The same checks on every push to `main` and pull request |
 
-The Stage 03 generator uses only standard-library `random.Random`, `csv`, `hashlib` and exact `Decimal` arithmetic; it needs no NumPy or Faker. Stage 04 uses PostgreSQL aggregation and Python `Decimal` without new dependencies; Pandas and DuckDB are deferred until a concrete use case requires them ([ADR 0004](adr/0004-deterministic-analytics-core.md)). Stage 05 adds locked scikit-learn and its transitive dependencies, while exact monetary metrics remain SQL/Decimal. Stage 07 adds the official OpenAI SDK for tool calling and structured outputs. Planned additions: Streamlit and Plotly (Stage 08); an application Docker image (Stage 10).
+The Stage 03 generator uses only standard-library `random.Random`, `csv`, `hashlib` and exact `Decimal` arithmetic; it needs no NumPy or Faker. Stage 04 uses PostgreSQL aggregation and Python `Decimal` without new dependencies; Pandas and DuckDB are deferred until a concrete use case requires them ([ADR 0004](adr/0004-deterministic-analytics-core.md)). Stage 05 adds locked scikit-learn and its transitive dependencies, while exact monetary metrics remain SQL/Decimal. Stage 07 adds the official OpenAI SDK for tool calling and structured outputs. Stage 08 adds Streamlit 1.65.0 and Plotly 7.1.0. Pandas is now a transitive UI dependency, not a replacement for deterministic SQL/Decimal analytics. An application Docker image remains planned for Stage 10.
 
 ## Data model
 
@@ -123,7 +123,7 @@ Fixed before any data exists, so that every later stage uses the same rules:
 
 ## Verification and CI
 
-Unit tests cover HTTP responses, settings, schema structure, deterministic data generation and bundle handling, positive and negative anomaly cases, insufficient histories, stockout gaps, model reproducibility and offline coverage matching. Integration tests use a real PostgreSQL database whose name must end with `_test`: migrations, readiness, constraints, exact money and time round trips, SQL examples, data loading, cross-table quality rules, exact analytics and anomaly features against manual and generated fixtures. Tests use `TEST_DATABASE_URL` only and never the development `.env` address. Ruff checks style and formatting; mypy runs in strict mode over `app`, `tests` and `migrations`. GitHub Actions repeats the configured checks on `ubuntu-24.04` with a PostgreSQL service, SHA-pinned actions and read-only permissions. Actual counts, results and limits belong in [VERIFICATION.md](VERIFICATION.md); local results do not establish a successful remote run. The workflow is explained in [CI_CD.md](CI_CD.md).
+Unit tests cover HTTP responses, settings, schema structure, deterministic data generation and bundle handling, positive and negative anomaly cases, insufficient histories, stockout gaps, model reproducibility and offline coverage matching. Integration tests use a real PostgreSQL database whose name must end with `_test`: migrations, readiness, constraints, exact money and time round trips, SQL examples, data loading, cross-table quality rules, exact analytics and anomaly features against manual and generated fixtures. Tests use `TEST_DATABASE_URL` only and never the development `.env` address. Ruff checks style and formatting; mypy runs in strict mode over `app`, `ui`, `tests` and `migrations`. GitHub Actions repeats the configured checks on `ubuntu-24.04` with a PostgreSQL service, SHA-pinned actions and read-only permissions. Actual counts, results and limits belong in [VERIFICATION.md](VERIFICATION.md); local results do not establish a successful remote run. The workflow is explained in [CI_CD.md](CI_CD.md).
 
 ## Decisions
 
@@ -200,4 +200,12 @@ Arguments are validated by strict Pydantic models before any SQL (unknown fields
 
 ## Next steps
 
-Stage 08 adds a Streamlit interface: a chat with the agent, Plotly charts from API data and report export. The agent report already keeps evidence separately, so each fact can be shown with the tool call it came from.
+Stage 08 implements the local Streamlit interface described below. Stage 09 adds agent evaluations and security work; the live OpenAI path remains unverified without a key.
+
+## Streamlit interface
+
+`ui/main.py` runs only the selected page: Dashboard, AI analyst or Reports. `APIClient` uses standard-library urllib with a validated loopback origin, bounded responses and shared Pydantic response schemas. It ignores proxies, rejects redirects and never retries POST. UI settings have a 150-second default socket waiting timeout; timing out does not cancel work already started by the API. No UI code opens database connections or invokes the LLM.
+
+Date forms are explicit, with editable demonstration presets and half-open Moscow periods. `DashboardSnapshot` stores the submitted query together with the three HTTP results, so unsubmitted widget edits cannot change the parameters of a save. Those GETs use separate database snapshots. Save recomputes through `POST /api/reports` and renders the returned immutable result. Plotly uses floats only for coordinates; exact money remains Decimal and string labels, hover customdata and JSON.
+
+Each chat question is an independent investigation, not a continuation of previous messages. At most 20 entries stay in the current browser session; stored API history is paginated in sets of ten, including failed runs. A handled failure UUID can open its partial trace. Reports and investigations can be downloaded as JSON. `AppTest` checks actions and reruns with a fake API; a real-browser smoke check is recorded separately. See [ADR 0008](adr/0008-streamlit-interface.md).

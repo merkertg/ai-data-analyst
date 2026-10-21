@@ -10,7 +10,7 @@ Lint, formatting, type checks, migrations, unit and integration tests, and the l
 uv sync --locked
 uv run --locked ruff check .
 uv run --locked ruff format --check .
-uv run --locked mypy app tests migrations
+uv run --locked mypy app ui tests migrations
 docker compose --profile test up --detach --wait db-test
 export TEST_DATABASE_URL='postgresql+psycopg://analyst:analyst_test@127.0.0.1:5437/industrialflow_test'
 uv run --locked pytest -v
@@ -156,3 +156,11 @@ uv run --locked pytest
 ```
 
 Recorded results of every check are in the [verification report](../VERIFICATION.md).
+
+## Streamlit checks (Stage 08)
+
+```bash
+uv run pytest tests/test_ui_config.py tests/test_ui_client.py tests/test_ui_charts.py tests/test_ui_app.py
+```
+
+Client tests use a synthetic transport, and Streamlit AppTest uses a fake API client; no PostgreSQL or model key is needed. They verify exact money labels, error handling, submitted-filter snapshots, explicit save/question requests and persistence across reruns. For a full browser smoke check, start the API on a dedicated database from `TEST_DATABASE_URL` (name ending `_test`) loaded with the fictional demo bundle, then run the interface with `UI_API_URL` pointing to that local server. Open all three pages, load metrics, submit a mock question, save and reopen comparison/anomaly reports, and download JSON. A healthy Streamlit HTML response alone does not verify the application script or its imports.

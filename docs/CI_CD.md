@@ -75,7 +75,7 @@ push в main / pull request в main / ручной запуск
    3. Install locked dependencies    — uv sync --locked
    4. Ruff lint                      — uv run --locked ruff check .
    5. Ruff format                    — uv run --locked ruff format --check .
-   6. Mypy                           — uv run --locked mypy app tests migrations
+   6. Mypy                           — uv run --locked mypy app ui tests migrations
    7. Apply migrations               — alembic upgrade head
    8. Check models match migrations  — alembic check
    9. Check downgrade and upgrade    — alembic downgrade base, затем upgrade head
@@ -173,7 +173,7 @@ uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 | `pyproject.toml` | Зависимости и настройки pytest, Ruff, mypy; политика возраста пакетов |
 | `uv.lock` | Точные версии и хэши всех пакетов; `uv sync --locked` ставит именно их |
 | `.python-version` | Версия Python для uv: 3.12 |
-| `app/`, `tests/`, `migrations/` | Что проверяют mypy и pytest |
+| `app/`, `ui/`, `tests/`, `migrations/` | Что проверяют mypy и pytest |
 | `alembic.ini`, `migrations/versions/` | Миграции, которые применяют шаги 7–9 |
 | `sql/` | Запросы, которые выполняют интеграционные тесты |
 | `app/data/` | Генератор, проверка файлового набора, загрузка и проверки качества данных |
@@ -229,7 +229,7 @@ git push origin main
 uv sync --locked
 uv run --locked ruff check .
 uv run --locked ruff format --check .
-uv run --locked mypy app tests migrations
+uv run --locked mypy app ui tests migrations
 docker compose --profile test up --detach --wait db-test
 export TEST_DATABASE_URL='postgresql+psycopg://analyst:analyst_test@127.0.0.1:5437/industrialflow_test'
 export DATABASE_URL="$TEST_DATABASE_URL"
@@ -299,3 +299,7 @@ Lock-файл и синхронизация окружения:
 
 Проверка workflow:
 [actionlint v1.7.12](https://github.com/rhysd/actionlint/releases/tag/v1.7.12).
+
+## Дополнение этапа 08
+
+Pipeline проверяет также `ui/` строгим mypy. Pytest запускает проверки настроек и HTTP-клиента, точности подписей графиков и Streamlit AppTest с поддельным API. Эти тесты не вызывают живую модель и не открывают браузер. Ручная проверка настоящего Streamlit и FastAPI на демонстрационной базе записывается отдельно в [VERIFICATION.md](VERIFICATION.md); она не заменяет удалённый GitHub Actions.

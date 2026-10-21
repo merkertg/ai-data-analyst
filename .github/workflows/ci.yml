@@ -70,7 +70,7 @@ jobs:
         run: uv run --locked ruff format --check .
 
       - name: Mypy
-        run: uv run --locked mypy app tests migrations
+        run: uv run --locked mypy app ui tests migrations
 
       # Схема создаётся только миграциями — так же, как у пользователя.
       - name: Apply migrations

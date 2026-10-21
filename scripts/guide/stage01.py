@@ -51,12 +51,16 @@ from guide.toc import section
 DEPENDENCY_PURPOSE = {
     "alembic": ("миграции схемы", "schema migrations"),
     "fastapi": ("маршруты, проверка данных, /docs", "routes, validation, /docs"),
+    "openai": ("инструменты и отчёт модели", "model tools and reports"),
+    "plotly": ("интерактивные графики", "interactive charts"),
     "psycopg": ("драйвер PostgreSQL", "PostgreSQL driver"),
     "pydantic-settings": (
         "настройки из окружения и .env",
         "settings from env and .env",
     ),
     "sqlalchemy": ("модели, пул, сессии", "models, pool, sessions"),
+    "scikit-learn": ("детектор Isolation Forest", "Isolation Forest detector"),
+    "streamlit": ("браузерный интерфейс", "browser interface"),
     "uvicorn": ("ASGI-сервер, слушает порт", "ASGI server, listens on a port"),
     "httpx2": ("HTTP-клиент для TestClient", "HTTP client for TestClient"),
     "mypy": ("проверка типов", "type checking"),
@@ -239,6 +243,7 @@ def add_stage01(story, verification, dependencies, lock_packages, facts):
             ],
             [118, 70, 70, W - 258],
             [CELL, CELL, CELL, CELL],
+            vertical_padding=3,
         ),
         Spacer(1, 10),
         callout(

@@ -11,10 +11,12 @@ dependencies = [
     "alembic>=1.16,<2",            # Версионированные миграции схемы PostgreSQL.
     "fastapi>=0.142.2",            # Маршруты API, проверка данных, страница /docs.
     "openai>=3.24.0,<4",           # Официальный SDK: Responses API, вызов функций, строгая схема.
+    "plotly>=6.3,<8",             # Interactive charts; exact money labels come from the API.
     "psycopg[binary]>=3.2,<4",     # Драйвер PostgreSQL 3-й версии для SQLAlchemy.
     "pydantic-settings>=2.15.0",   # Настройки из переменных окружения и .env.
     "scikit-learn>=1.7,<2",
     "sqlalchemy>=2.0,<3",          # Модели таблиц, соединения, сессии и транзакции.
+    "streamlit>=1.50,<2",         # Local dashboard, agent questions and saved report UI.
     "uvicorn[standard]>=0.54.0",   # ASGI-сервер, который слушает порт и вызывает app.
 ]
 
@@ -69,4 +71,9 @@ plugins = ["pydantic.mypy"]
 # Scikit-learn does not ship typing metadata; keep this exception vendor-only.
 [[tool.mypy.overrides]]
 module = ["sklearn.ensemble"]
+ignore_missing_imports = true
+
+# Plotly has no typing metadata; keep the exception limited to its package.
+[[tool.mypy.overrides]]
+module = ["plotly.*"]
 ignore_missing_imports = true

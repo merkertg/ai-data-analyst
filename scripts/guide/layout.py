@@ -364,10 +364,10 @@ def grid_table(rows, widths, head_fill=INK, zebra=True, styles=None):
     return table
 
 
-def simple_table(headers, rows, widths, styles=None):
-    """Таблица из строк с разметкой: первая колонка жирная, остальные обычные.
+def simple_table(headers, rows, widths, styles=None, vertical_padding=None):
+    """Build a striped table with optional compact padding for longer lists.
 
-    styles задаёт стиль абзаца для каждой колонки (по умолчанию CELL_B, CELL...).
+    styles defines paragraph styles per column; padding leaves fonts unchanged.
     """
     styles = styles or [CELL_B] + [CELL] * (len(headers) - 1)
     prepared = [[p(value, HEAD) for value in headers]]
@@ -375,7 +375,17 @@ def simple_table(headers, rows, widths, styles=None):
         prepared.append(
             [p(value, style) for value, style in zip(row, styles, strict=True)]
         )
-    return grid_table(prepared, widths)
+    table = grid_table(prepared, widths)
+    if vertical_padding is not None:
+        table.setStyle(
+            TableStyle(
+                [
+                    ("TOPPADDING", (0, 0), (-1, -1), vertical_padding),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), vertical_padding),
+                ]
+            )
+        )
+    return table
 
 
 def cards(items, columns=3, gap=10):

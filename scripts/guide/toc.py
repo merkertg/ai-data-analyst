@@ -43,6 +43,9 @@ CONTENTS = [
     ("Цикл tool calling", "Tool-calling loop"),
     ("Отчёт и доказательства", "Report and evidence"),
     ("Провайдеры и история", "Providers and history"),
+    ("Интерфейс Streamlit", "Streamlit interface"),
+    ("Показатели и графики", "Metrics and charts"),
+    ("Вопросы и отчёты в UI", "Questions and reports in the UI"),
     ("CI на GitHub Actions", "CI on GitHub Actions"),
     ("Шпаргалка команд", "Command cheat sheet"),
     ("Типичные ошибки", "Common errors"),
@@ -58,6 +61,7 @@ STAGE_04_SECTIONS = range(24, 27)
 STAGE_05_SECTIONS = range(27, 30)
 STAGE_06_SECTIONS = range(30, 33)
 STAGE_07_SECTIONS = range(33, 37)
+STAGE_08_SECTIONS = range(37, 40)
 
 
 def number_of(ru_title: str) -> int:

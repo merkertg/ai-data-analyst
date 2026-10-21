@@ -36,7 +36,52 @@ from guide.layout import (
 )
 
 # Сколько этапов курса уже выполнено: зелёные карточки дорожной карты.
-STAGES_DONE = 7
+STAGES_DONE = 8
+
+
+def ui_flow(c, w, h):
+    """Show Streamlit as an HTTP client and keep database access in FastAPI."""
+    gap, bh = 18, 56
+    bw = (w - 2 * gap) / 3
+    y = h - bh - 5
+    items = [
+        (
+            "Streamlit :8501",
+            tr("формы, графики, загрузки", "forms, charts, downloads"),
+            BLUE_L,
+            BLUE,
+        ),
+        (
+            "FastAPI :8000",
+            tr("метрики и AI-агент", "metrics and AI agent"),
+            TEAL_L,
+            TEAL,
+        ),
+        (
+            "PostgreSQL",
+            tr("данные и отчёты", "data and reports"),
+            GREEN_L,
+            GREEN,
+        ),
+    ]
+    for index, (heading, detail, fill, edge) in enumerate(items):
+        x = index * (bw + gap)
+        node(c, x, y, bw, bh, heading, detail, fill, edge)
+        if index < len(items) - 1:
+            arrow(c, x + bw + 2, y + bh / 2, x + bw + gap - 2, y + bh / 2)
+    c.setFillColor(MUTED)
+    draw_text(
+        c,
+        w / 2,
+        12,
+        tr(
+            "HTTP + JSON · UI не открывает соединение с базой",
+            "HTTP + JSON · the UI never opens a database connection",
+        ),
+        "PT",
+        9,
+        "center",
+    )
 
 
 def agent_loop(c, w, h):
