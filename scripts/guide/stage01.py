@@ -860,11 +860,11 @@ def add_stage01(story, verification, dependencies, lock_packages, facts):
         callout(
             tr(
                 f"Это 7 тестов этапа 01. Сейчас в проекте {tests['unit']} unit-тестов и "
-                f"{tests['integration']} интеграционных. Проверки этапов 02–04 — "
-                "в разделах 20, 23 и 26.",
+                f"{tests['integration']} интеграционных. Проверки этапов 02–05 — "
+                "в разделах 20, 23, 26 и 29.",
                 f"These are the 7 Stage 01 tests. The project now has {tests['unit']} "
                 f"unit and {tests['integration']} integration tests. Checks for "
-                "Stages 02–04 are in sections 20, 23 and 26.",
+                "Stages 02–05 are in sections 20, 23, 26 and 29.",
             ),
             GREEN,
             GREEN_L,

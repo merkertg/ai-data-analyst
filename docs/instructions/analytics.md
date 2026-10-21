@@ -4,6 +4,8 @@
 
 Stage 04 provides deterministic SQL/Decimal metrics and a read-only JSON CLI. The detailed Russian walkthrough is [STAGE_04.md](../STAGE_04.md); the design is [ADR 0004](../adr/0004-deterministic-analytics-core.md). Metrics HTTP endpoints arrive in Stage 06.
 
+Stage 05 builds [anomaly detection](anomalies.md) on this exact-money contract. Its separate CLI reads current data and produces statistical and Isolation Forest candidates; an offline evaluator alone reads the injected-scenario answer key. Candidates and group contributions provide evidence for investigation, not causal proof.
+
 ## Run
 
 Start PostgreSQL, apply migrations and load either the demo or sample dataset as explained in the [quickstart](quickstart.md). The CLI uses `DATABASE_URL` from project settings; no API server is required.

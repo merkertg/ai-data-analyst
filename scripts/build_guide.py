@@ -41,6 +41,7 @@ from guide.toc import (
     STAGE_02_SECTIONS,
     STAGE_03_SECTIONS,
     STAGE_04_SECTIONS,
+    STAGE_05_SECTIONS,
 )
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
@@ -57,7 +58,7 @@ OUTPUTS = {
 
 # ---------- Колонтитулы ----------
 def cover_page(c, doc):
-    """Обложка рисуется целиком на холсте."""
+    """Draw the cover, stage ranges and compact two-column contents."""
     verification = doc.verification
     c.saveState()
     c.setFillColor(INK)
@@ -97,10 +98,10 @@ def cover_page(c, doc):
     for line in simpleSplit(
         tr(
             "Наглядное руководство: окружение uv, API на FastAPI, PostgreSQL в Docker, "
-            "миграции Alembic, SQL, воспроизводимые данные, точная аналитика, "
+            "миграции Alembic, SQL, воспроизводимые данные, аналитика, аномалии, "
             "тесты и CI.",
             "A visual guide: the uv environment, a FastAPI API, PostgreSQL in Docker, "
-            "Alembic migrations, SQL, reproducible data, exact analytics, "
+            "Alembic migrations, SQL, reproducible data, analytics, anomalies, "
             "tests and CI.",
         ),
         "PT",
@@ -164,7 +165,7 @@ def cover_page(c, doc):
         W,
         74,
         [
-            (f"{STAGES_DONE} / 10", tr("этапа курса завершены", "course stages done")),
+            (f"{STAGES_DONE} / 10", tr("этапов курса завершены", "course stages done")),
             (
                 f"{tests['passed']} / {tests['total']}",
                 tr("автотестов прошли", "tests passed"),
@@ -184,7 +185,7 @@ def cover_page(c, doc):
     c.setFillColor(HEX("#CBD5E1"))
     c.setFont("PT-Bold", 10)
     c.drawString(MARGIN, 318, tr("Что внутри", "Contents"))
-    c.setFont("PT", 8.4)
+    c.setFont("PT", 7.8)
     c.setFillColor(HEX("#64748B"))
     c.drawString(
         MARGIN + 80,
@@ -193,11 +194,13 @@ def cover_page(c, doc):
             f"01: {STAGE_01_SECTIONS[0]}–{STAGE_01_SECTIONS[-1]} · "
             f"02: {STAGE_02_SECTIONS[0]}–{STAGE_02_SECTIONS[-1]} · "
             f"03: {STAGE_03_SECTIONS[0]}–{STAGE_03_SECTIONS[-1]} · "
-            f"04: {STAGE_04_SECTIONS[0]}–{STAGE_04_SECTIONS[-1]}",
+            f"04: {STAGE_04_SECTIONS[0]}–{STAGE_04_SECTIONS[-1]} · "
+            f"05: {STAGE_05_SECTIONS[0]}–{STAGE_05_SECTIONS[-1]}",
             f"01: {STAGE_01_SECTIONS[0]}–{STAGE_01_SECTIONS[-1]} · "
             f"02: {STAGE_02_SECTIONS[0]}–{STAGE_02_SECTIONS[-1]} · "
             f"03: {STAGE_03_SECTIONS[0]}–{STAGE_03_SECTIONS[-1]} · "
-            f"04: {STAGE_04_SECTIONS[0]}–{STAGE_04_SECTIONS[-1]}",
+            f"04: {STAGE_04_SECTIONS[0]}–{STAGE_04_SECTIONS[-1]} · "
+            f"05: {STAGE_05_SECTIONS[0]}–{STAGE_05_SECTIONS[-1]}",
         ),
     )
     c.setFont("PT", 9.3)
@@ -213,9 +216,11 @@ def cover_page(c, doc):
             c.setFillColor(HEX("#C4B5FD"))
         elif number in STAGE_04_SECTIONS:
             c.setFillColor(HEX("#FDBA74"))
+        elif number in STAGE_05_SECTIONS:
+            c.setFillColor(HEX("#86EFAC"))
         else:
             c.setFillColor(HEX("#94A3B8"))
-        c.drawString(MARGIN + column * 250, 300 - row * 12.8, f"{number}  {tr(ru, en)}")
+        c.drawString(MARGIN + column * 250, 300 - row * 12.0, f"{number}  {tr(ru, en)}")
     c.setStrokeColor(HEX("#334155"))
     c.line(MARGIN, 82, PAGE_W - MARGIN, 82)
     c.setFillColor(HEX("#64748B"))
@@ -235,8 +240,8 @@ def cover_page(c, doc):
         MARGIN,
         53,
         tr(
-            "Этапы: docs/STAGE_01.md–STAGE_04.md; отчёт: docs/VERIFICATION.md",
-            "Stage guides: docs/STAGE_01.md–STAGE_04.md; "
+            "Этапы: docs/STAGE_01.md–STAGE_05.md; отчёт: docs/VERIFICATION.md",
+            "Stage guides: docs/STAGE_01.md–STAGE_05.md; "
             "instructions: docs/instructions/",
         ),
     )

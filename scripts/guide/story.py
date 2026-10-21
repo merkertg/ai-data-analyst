@@ -1,4 +1,4 @@
-"""Порядок страниц PDF: обзор, этапы 01–04, CI, справочные разделы и итоги."""
+"""Assemble the overview, Stages 01-05, CI, reference pages and results."""
 
 from html import escape
 
@@ -38,6 +38,7 @@ from guide.stage01 import add_stage01
 from guide.stage02 import add_stage02
 from guide.stage03 import add_stage03
 from guide.stage04 import add_stage04
+from guide.stage05 import add_stage05
 from guide.toc import section
 
 # Плотные ячейки для таблиц итогов: страница итогов помещается целиком.
@@ -72,7 +73,7 @@ def remote_label(status: str) -> str:
 
 
 def build_story(verification, dependencies, lock_packages, facts, counts):
-    """Собрать все страницы руководства после обложки."""
+    """Assemble all guide pages after the cover from bilingual sources."""
     story = [NextPageTemplate("content"), PageBreak()]
     tests = verification["tests"]
 
@@ -94,13 +95,15 @@ def build_story(verification, dependencies, lock_packages, facts, counts):
                 "датчики. Руководитель задаёт вопрос обычным языком, а агент вызывает "
                 "аналитические инструменты, точно считает показатели и пишет отчёт. "
                 f"Готовы этапы 01–{STAGES_DONE:02d}: каркас API с проверками и CI, "
-                "база PostgreSQL, данные, проверки качества и точная аналитика.",
+                "база PostgreSQL, данные, проверки качества, точная аналитика "
+                "и поиск аномалий.",
                 "<b>AI Data Analyst</b> is an AI analyst for <b>IndustrialFlow</b>, a "
                 "fictional company selling pumps, compressors, valves and sensors. A "
                 "manager asks in plain language; the agent calls analytics tools, "
                 "computes exact metrics and writes a report. "
                 f"Stages 01–{STAGES_DONE:02d} are done: an API foundation with checks "
-                "and CI, a PostgreSQL database, reproducible data, quality checks and exact analytics.",
+                "and CI, a PostgreSQL database, reproducible data, quality checks, "
+                "exact analytics and anomaly detection.",
             )
         ),
         Spacer(1, 10),
@@ -193,9 +196,9 @@ def build_story(verification, dependencies, lock_packages, facts, counts):
         Spacer(1, 8),
         callout(
             tr(
-                "<b>Чего ещё нет:</b> поиска аномалий (05), REST API метрик (06), "
+                "<b>Чего ещё нет:</b> REST API метрик (06), "
                 "LLM-агента (07) и интерфейса (08).",
-                "<b>Not there yet:</b> anomaly detection (05), the metrics REST API (06), "
+                "<b>Not there yet:</b> the metrics REST API (06), "
                 "the LLM agent (07) and the UI (08).",
             ),
             AMBER,
@@ -221,12 +224,13 @@ def build_story(verification, dependencies, lock_packages, facts, counts):
     add_stage02(story, verification, counts)
     add_stage03(story)
     add_stage04(story)
+    add_stage05(story)
 
-    # 27. CI на GitHub Actions
+    # 30. CI on GitHub Actions
     remote = verification["remote_ci"]
     section(
         story,
-        27,
+        30,
         tr(
             "Те же проверки на чистой Linux-машине с отдельной PostgreSQL.",
             "The same checks on a clean Linux machine with its own PostgreSQL.",
@@ -297,13 +301,13 @@ def build_story(verification, dependencies, lock_packages, facts, counts):
         ),
     ]
 
-    # 28. Шпаргалка команд
+    # 31. Command cheat sheet
     section(
         story,
-        28,
+        31,
         tr(
-            "Основные команды этапов 01–04.",
-            "Essential commands for Stages 01–04.",
+            "Основные команды этапов 01–05.",
+            "Essential commands for Stages 01–05.",
         ),
         TEAL,
     )
@@ -334,6 +338,10 @@ def build_story(verification, dependencies, lock_packages, facts, counts):
             "uv run python -m app.analytics --start 2026-09-01 --end 2026-10-01",
         ),
         (
+            tr("Кандидаты на аномалии", "Anomaly candidates"),
+            "uv run python -m app.analytics.anomalies --start 2026-01-01 --end 2026-10-01",
+        ),
+        (
             tr("Запустить сервер", "Start the server"),
             "uv run uvicorn app.main:app --reload",
         ),
@@ -356,8 +364,8 @@ def build_story(verification, dependencies, lock_packages, facts, counts):
         ),
         (tr("Типы", "Types"), "uv run mypy app tests migrations"),
         (
-            tr("Новая миграция", "New migration"),
-            'uv run alembic revision --autogenerate --rev-id 0002 -m "..."',
+            tr("Оценка сценариев", "Scenario evaluation"),
+            "uv run python -m app.analytics.evaluate --help",
         ),
         (tr("Модели = миграции?", "Models = migrations?"), "uv run alembic check"),
         (
@@ -380,10 +388,10 @@ def build_story(verification, dependencies, lock_packages, facts, counts):
         )
     )
 
-    # 29. Типичные ошибки
+    # 32. Common errors
     section(
         story,
-        29,
+        32,
         tr("Симптом, причина и что сделать.", "Symptom, cause and fix."),
         ORANGE,
     )
@@ -506,10 +514,10 @@ def build_story(verification, dependencies, lock_packages, facts, counts):
         )
     )
 
-    # 30. Проверь себя
+    # 33. Check yourself
     section(
         story,
-        30,
+        33,
         tr(
             "Вопросы для самопроверки и самостоятельные задания.",
             "Self-check questions and practice tasks.",
@@ -652,15 +660,15 @@ def build_story(verification, dependencies, lock_packages, facts, counts):
         ),
     ]
 
-    # 31. Итоги проверки
+    # 34. Verification results
     environment = verification["environment"]
     section(
         story,
-        31,
+        34,
         tr(
-            f"Дата проверки: {verification['checked_at']}; код этапа — коммит "
+            f"Дата проверки: {verification['checked_at']}; база рабочего дерева "
             f"{verification['base_commit']}.",
-            f"Verified on {verification['checked_at']}; stage code at commit "
+            f"Verified on {verification['checked_at']}; working-tree base "
             f"{verification['base_commit']}.",
         ),
         GREEN,

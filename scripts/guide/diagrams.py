@@ -36,7 +36,53 @@ from guide.layout import (
 )
 
 # Сколько этапов курса уже выполнено: зелёные карточки дорожной карты.
-STAGES_DONE = 4
+STAGES_DONE = 5
+
+
+def anomaly_flow(c, w, h):
+    """Separate runtime database detection from offline answer-key evaluation."""
+    gap, bh = 18, 47
+    bw = (w - 2 * gap) / 3
+    top_y = h - bh - 5
+    items = [
+        ("PostgreSQL", tr("текущие данные", "current data"), TEAL_L, TEAL),
+        (
+            tr("Детекторы", "Detectors"),
+            tr("SQL/Decimal + модель", "SQL/Decimal + model"),
+            VIOLET_L,
+            VIOLET,
+        ),
+        (tr("Отчёт", "Report"), "anomalies.json", BLUE_L, BLUE),
+    ]
+    for index, (title, sub, fill, edge) in enumerate(items):
+        x = index * (bw + gap)
+        node(c, x, top_y, bw, bh, title, sub, fill, edge)
+        if index < len(items) - 1:
+            arrow(c, x + bw + 2, top_y + bh / 2, x + bw + gap - 2, top_y + bh / 2)
+    node(
+        c, 0, 5, bw, bh, tr("Эталон", "Answer key"), "ground_truth.json", AMBER_L, AMBER
+    )
+    node(
+        c,
+        bw + gap,
+        5,
+        bw,
+        bh,
+        tr("Offline-оценка", "Offline evaluation"),
+        tr("покрытие A01–A05", "A01–A05 coverage"),
+        GREEN_L,
+        GREEN,
+    )
+    arrow(c, bw + 2, 5 + bh / 2, bw + gap - 2, 5 + bh / 2, AMBER)
+    poly_arrow(
+        c,
+        [
+            (2 * (bw + gap) + bw / 2, top_y - 2),
+            (2 * (bw + gap) + bw / 2, 5 + bh / 2),
+            (2 * bw + gap + 2, 5 + bh / 2),
+        ],
+        BLUE,
+    )
 
 
 def roadmap(c, w, h):

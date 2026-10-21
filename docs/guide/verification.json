@@ -1,7 +1,7 @@
 {
   "checked_at": "2026-10-21",
-  "base_commit": "3624050",
-  "stage": 4,
+  "base_commit": "1aa1d24 + worktree",
+  "stage": 5,
   "environment": {
     "os": {
       "ru": "macOS, Apple Silicon",
@@ -13,13 +13,13 @@
     "postgres": "17"
   },
   "tests": {
-    "total": 158,
-    "unit": 86,
-    "integration": 72,
-    "passed": 158,
+    "total": 223,
+    "unit": 136,
+    "integration": 87,
+    "passed": 223,
     "failed": 0,
     "skipped": 0,
-    "seconds": 3.13
+    "seconds": 3.88
   },
   "checks": [
     {
@@ -27,10 +27,10 @@
         "ru": "Тесты",
         "en": "Tests"
       },
-      "command": "CI=true TEST_DATABASE_URL=... uv run pytest",
+      "command": "CI=true TEST_DATABASE_URL=... pytest",
       "result": {
-        "ru": "158 passed: 86 unit + 72 integration",
-        "en": "158 passed: 86 unit + 72 integration"
+        "ru": "223 passed: 136 unit + 87 integration",
+        "en": "223 passed: 136 unit + 87 integration"
       },
       "status": "pass"
     },
@@ -39,7 +39,7 @@
         "ru": "Линтер",
         "en": "Lint"
       },
-      "command": "uv run ruff check .",
+      "command": "ruff check .",
       "result": {
         "ru": "All checks passed",
         "en": "All checks passed"
@@ -51,10 +51,10 @@
         "ru": "Формат",
         "en": "Format"
       },
-      "command": "uv run ruff format --check .",
+      "command": "ruff format --check .",
       "result": {
-        "ru": "Все Python-файлы и блоки Markdown",
-        "en": "All Python files and Markdown blocks"
+        "ru": "Python и блоки Markdown",
+        "en": "Python and Markdown blocks"
       },
       "status": "pass"
     },
@@ -63,10 +63,10 @@
         "ru": "Типы",
         "en": "Types"
       },
-      "command": "uv run mypy app tests migrations",
+      "command": "mypy app tests migrations",
       "result": {
-        "ru": "Нет ошибок в 37 исходных файлах",
-        "en": "No issues in 37 source files"
+        "ru": "Нет ошибок в 46 файлах",
+        "en": "No issues in 46 files"
       },
       "status": "pass"
     },
@@ -75,94 +75,58 @@
         "ru": "Миграции",
         "en": "Migrations"
       },
-      "command": "alembic upgrade head · check · downgrade base",
+      "command": "alembic upgrade / check / downgrade",
       "result": {
-        "ru": "Схема 0001; расхождений с моделями нет",
+        "ru": "Схема 0001; расхождений нет",
         "en": "Schema 0001; no model drift"
       },
       "status": "pass"
     },
     {
       "name": {
-        "ru": "Чистый клон",
-        "en": "Clean clone"
+        "ru": "Зависимости",
+        "en": "Dependencies"
       },
-      "command": "git clone → uv sync --locked → CI steps",
+      "command": "uv lock --check --offline",
       "result": {
-        "ru": "Коммит 3624050: все шаги CI, 158 passed",
-        "en": "Commit 3624050: every CI step, 158 passed"
+        "ru": "52 пакета; newest upload 2026-10-03",
+        "en": "52 packages; newest upload 2026-10-03"
       },
       "status": "pass"
     },
     {
       "name": {
-        "ru": "Полный набор",
-        "en": "Full dataset"
+        "ru": "Полный детектор",
+        "en": "Full detector"
       },
-      "command": "python -m app.data.load · app.data.quality",
+      "command": "python -m app.analytics.anomalies",
       "result": {
-        "ru": "20 000 заказов в отдельной базе *_test; 0 нарушений",
-        "en": "20,000 orders in a separate *_test database; 0 violations"
+        "ru": "33 кандидата: 7 robust, 1 IQR, 1 stock, 24 IF",
+        "en": "33 candidates: 7 robust, 1 IQR, 1 stock, 24 IF"
       },
       "status": "pass"
     },
     {
       "name": {
-        "ru": "Учебный набор",
-        "en": "Sample fixture"
+        "ru": "Сценарии",
+        "en": "Scenarios"
       },
-      "command": "python -m app.analytics (Oct vs Sep)",
+      "command": "python -m app.analytics.evaluate",
       "result": {
-        "ru": "−291 500.00 (−94.34%); вклады 102.92 / 3.26 / −6.17%",
-        "en": "−291,500.00 (−94.34%); shares 102.92 / 3.26 / −6.17%"
+        "ru": "Покрытие A01–A05: 5/5; точность не измерена",
+        "en": "A01–A05 coverage: 5/5; precision not measured"
       },
       "status": "pass"
     },
     {
       "name": {
-        "ru": "Аналитика A01",
-        "en": "Analytics A01"
+        "ru": "Повторяемость",
+        "en": "Reproducibility"
       },
-      "command": "python -m app.analytics (Sep vs Aug)",
+      "command": "same data + seed 42, two runs",
       "result": {
-        "ru": "Выручка −26.18%; насосы 83.75% падения",
-        "en": "Net revenue −26.18%; pumps 83.75% of the decline"
-      },
-      "status": "pass"
-    },
-    {
-      "name": {
-        "ru": "Аналитика A03",
-        "en": "Analytics A03"
-      },
-      "command": "python -m app.analytics (Jan–Sep)",
-      "result": {
-        "ru": "Возвраты июля 132 586 941.37 при 0.8–1.7 млн в другие месяцы",
-        "en": "July refunds 132,586,941.37 vs 0.8–1.7 million in other months"
-      },
-      "status": "pass"
-    },
-    {
-      "name": {
-        "ru": "Скорость CLI",
-        "en": "CLI speed"
-      },
-      "command": "time python -m app.analytics",
-      "result": {
-        "ru": "0.2–0.35 с на вызов вместе с запуском Python",
-        "en": "0.2–0.35 s per call including Python start-up"
-      },
-      "status": "pass"
-    },
-    {
-      "name": {
-        "ru": "Lock-файл",
-        "en": "Lock file"
-      },
-      "command": "uv lock --check",
-      "result": {
-        "ru": "45 пакетов; новых зависимостей нет",
-        "en": "45 packages; no new dependencies"
+        "ru": "JSON-отчёты совпали; 0 нарушений качества",
+        "en": "Equal JSON reports; 0 data quality violations"
       },
       "status": "pass"
     }
@@ -200,22 +164,22 @@
   "remote_ci": {
     "status": "not_verified",
     "detail": {
-      "ru": "Коммиты до cd3957f (этап 03) отправлены в main; коммиты этапа 04 ещё не отправлены. Результат GitHub Actions пользователь пока не подтвердил: репозиторий приватный.",
-      "en": "Commits up to cd3957f (Stage 03) were pushed to main; the Stage 04 commits are not pushed yet. The user has not confirmed the GitHub Actions result yet: the repository is private."
+      "ru": "Этап 05 проверен локально поверх 1aa1d24. Результат удалённого GitHub Actions для итогового коммита не подтверждён; приватный репозиторий недоступен через подключённый GitHub API.",
+      "en": "Stage 05 was checked locally on top of 1aa1d24. Remote GitHub Actions for the final commit is not confirmed; the private repository is unavailable through the connected GitHub API."
     }
   },
   "remaining": [
     {
-      "ru": "Отправить коммиты этапа 04 и подтвердить зелёное задание «Lint, types and tests» в Actions.",
-      "en": "Push the Stage 04 commits and confirm a green “Lint, types and tests” job in Actions."
+      "ru": "Этап 06: REST API для точных показателей, сравнений и поиска аномалий.",
+      "en": "Stage 06: REST API for exact metrics, comparisons and anomaly detection."
     },
     {
-      "ru": "Этап 05: статистический поиск аномалий и Isolation Forest на точных показателях этапа 04; оценка по ground_truth.json.",
-      "en": "Stage 05: statistical anomaly detection and Isolation Forest on the exact Stage 04 metrics, evaluated against ground_truth.json."
+      "ru": "Подтвердить GitHub Actions для итогового коммита; локальный прогон не заменяет удалённый CI.",
+      "en": "Confirm GitHub Actions for the final commit; local checks do not replace remote CI."
     },
     {
-      "ru": "Данные синтетические; вклады объясняют арифметику изменения, а не причину.",
-      "en": "The data is synthetic; contributions explain the arithmetic of change, not its cause."
+      "ru": "Оценены пять положительных сценариев; ложные срабатывания, причинность и качество на новых данных не установлены.",
+      "en": "Five positive scenarios were evaluated; false positives, causality and performance on unseen data are not established."
     }
   ],
   "dataset": {
@@ -242,12 +206,12 @@
   },
   "pdf": {
     "pages": {
-      "ru": 35,
-      "en": 35
+      "ru": 38,
+      "en": 38
     },
     "visual_review": {
-      "ru": "Все страницы обеих версий отрендерены; новые разделы 24–26, страница полного набора, обложка, CI и итоги проверены крупно.",
-      "en": "Every page in both versions was rendered; new sections 24–26, the full-dataset page, the cover, CI and results were inspected at full size."
+      "ru": "Все 38 страниц обеих версий просмотрены; новые разделы 27–29, обложка и итоги дополнительно проверены крупно.",
+      "en": "All 38 pages in both versions were reviewed; new sections 27–29, the cover and final results were also inspected at full size."
     }
   },
   "analytics": {
@@ -266,5 +230,32 @@
       "pumps_share": "83.75",
       "july_refunds": "132586941.37"
     }
+  },
+  "anomaly_detection": {
+    "seed": 42,
+    "observations": {
+      "lines": 35171,
+      "monthly": 324,
+      "stock": 17472
+    },
+    "finding_count": 33,
+    "methods": {
+      "iqr": 1,
+      "isolation_forest": 24,
+      "robust_zscore": 7,
+      "stock_rule": 1
+    },
+    "detected_scenarios": [
+      "A01",
+      "A02",
+      "A03",
+      "A04",
+      "A05"
+    ],
+    "coverage_percent": "100",
+    "reproducible": true,
+    "scikit_learn": "1.9.1",
+    "numpy": "2.5.3",
+    "scipy": "1.18.1"
   }
 }

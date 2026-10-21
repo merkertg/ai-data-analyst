@@ -8,9 +8,9 @@ The application answers such questions by running a short investigation: it sele
 
 The project uses fictional IndustrialFlow data generated with a fixed seed.
 
-## Current implementation: Stages 01–04
+## Current implementation: Stages 01–05
 
-The application has a runnable HTTP foundation, a PostgreSQL schema created by versioned migrations, reproducible generated data, an atomic loader and read-only cross-table quality checks. A read-only analytics CLI and reusable functions calculate exact financial metrics, comparisons and contributions. The metrics HTTP API and LLM agent follow in later stages.
+The application has a runnable HTTP foundation, a PostgreSQL schema created by versioned migrations, reproducible generated data, an atomic loader and read-only cross-table quality checks. A read-only analytics CLI and reusable functions calculate exact financial metrics, comparisons and contributions. Anomaly detection adds statistical rules, stockout runs and seeded Isolation Forest candidates, with a separate offline evaluation of injected-scenario coverage. The metrics HTTP API and LLM agent follow in later stages.
 
 ```text
 HTTP client → Uvicorn → FastAPI
@@ -27,6 +27,10 @@ Quality CLI (python -m app.data.quality) → read-only cross-table checks
 Analytics CLI (python -m app.analytics) → read-only repeatable-read transaction
   ├─ PostgreSQL → independent sales, order-count and refund aggregates
   └─ Python Decimal → metrics, comparisons, monthly buckets and contributions
+Detection CLI (python -m app.analytics.anomalies) → read-only repeatable-read snapshot
+  ├─ SQL/Decimal features → robust statistics, IQR and consecutive stockout rules
+  └─ dimensionless ratios → seeded scikit-learn Isolation Forest → candidates
+Offline evaluator (python -m app.analytics.evaluate) → report + ground truth → coverage
 sql/*.sql → hand-written queries, executed by integration tests
 
 Settings: environment variables → .env → defaults in app/config.py
@@ -49,6 +53,7 @@ Settings: environment variables → .env → defaults in app/config.py
 | ASGI server | Uvicorn | Local HTTP serving |
 | Database | PostgreSQL 17 in Docker Compose | Persistent records, relational links, integrity rules |
 | Database access | SQLAlchemy 2 with psycopg 3 | Typed models, connection pool, sessions and transactions |
+| Anomaly model | scikit-learn Isolation Forest | Seeded candidates on dimensionless monthly features |
 | Schema changes | Alembic | Ordered creation, drift check and explicit rollback |
 | Configuration | pydantic-settings | Environment and `.env` loading with validation |
 | Dependency management | uv 0.12.23 | Isolated environment, locked dependencies, Python download |
@@ -56,7 +61,7 @@ Settings: environment variables → .env → defaults in app/config.py
 | Code checks | Ruff, mypy (strict, Pydantic plugin) | Lint, formatting, import order, static types |
 | CI | GitHub Actions with a PostgreSQL service | The same checks on every push to `main` and pull request |
 
-The Stage 03 generator uses only standard-library `random.Random`, `csv`, `hashlib` and exact `Decimal` arithmetic; it needs no NumPy or Faker. Stage 04 uses PostgreSQL aggregation and Python `Decimal` without new dependencies; Pandas and DuckDB are deferred until a concrete use case requires them ([ADR 0004](adr/0004-deterministic-analytics-core.md)). Planned additions: scikit-learn for anomaly detection (Stage 05); the OpenAI API for tool calling and structured outputs (Stage 07); Streamlit and Plotly (Stage 08); an application Docker image (Stage 10).
+The Stage 03 generator uses only standard-library `random.Random`, `csv`, `hashlib` and exact `Decimal` arithmetic; it needs no NumPy or Faker. Stage 04 uses PostgreSQL aggregation and Python `Decimal` without new dependencies; Pandas and DuckDB are deferred until a concrete use case requires them ([ADR 0004](adr/0004-deterministic-analytics-core.md)). Stage 05 adds locked scikit-learn and its transitive dependencies, while exact monetary metrics remain SQL/Decimal. Planned additions: the OpenAI API for tool calling and structured outputs (Stage 07); Streamlit and Plotly (Stage 08); an application Docker image (Stage 10).
 
 ## Data model
 
@@ -81,8 +86,8 @@ Deleting an order cascades to its lines; every other foreign key is `RESTRICT`, 
 
 1. **Numbers come from code, not from the model.** Revenue, averages, comparisons and anomaly scores are computed by deterministic SQL or Python. The LLM interprets the question, chooses tools and explains results.
 2. **Restricted tools before free-form SQL.** The agent calls parameterised, pre-defined queries. Text-to-SQL, if added, will use a read-only role, table allow-lists and timeouts.
-3. **Exact money arithmetic.** PostgreSQL `NUMERIC` and Python `Decimal`, never `float`.
-4. **Reproducibility.** Locked dependencies, seeded demo data, and a `ground_truth.json` of injected anomalies used only for evaluation, never read by the agent.
+3. **Exact money arithmetic.** PostgreSQL `NUMERIC` and Python `Decimal`. Only dimensionless ratios are converted to floats for the anomaly model; monetary values are never recomputed by that model.
+4. **Reproducibility.** Locked dependencies, seeded demo data and Isolation Forest, and a `ground_truth.json` of injected anomalies used only by the offline evaluator, never read by runtime detection or the agent.
 5. **Modular monolith.** One FastAPI service with clear internal layers; no microservices.
 
 ## Metric definitions
@@ -105,7 +110,7 @@ Fixed before any data exists, so that every later stage uses the same rules:
 
 ## Verification and CI
 
-Unit tests cover HTTP responses, settings, schema structure, deterministic data generation and bundle handling. Integration tests use a real PostgreSQL database whose name must end with `_test`: migrations, readiness, constraints, exact money and time round trips, SQL examples, data loading, cross-table quality rules and exact analytics results against manual and generated fixtures. Tests use `TEST_DATABASE_URL` only and never the development `.env` address. Ruff checks style and formatting; mypy runs in strict mode over `app`, `tests` and `migrations`. GitHub Actions repeats the configured checks on `ubuntu-24.04` with a PostgreSQL service, SHA-pinned actions and read-only permissions. Actual counts, results and limits belong in [VERIFICATION.md](VERIFICATION.md); local results do not establish a successful remote run. The workflow is explained in [CI_CD.md](CI_CD.md).
+Unit tests cover HTTP responses, settings, schema structure, deterministic data generation and bundle handling, positive and negative anomaly cases, insufficient histories, stockout gaps, model reproducibility and offline coverage matching. Integration tests use a real PostgreSQL database whose name must end with `_test`: migrations, readiness, constraints, exact money and time round trips, SQL examples, data loading, cross-table quality rules, exact analytics and anomaly features against manual and generated fixtures. Tests use `TEST_DATABASE_URL` only and never the development `.env` address. Ruff checks style and formatting; mypy runs in strict mode over `app`, `tests` and `migrations`. GitHub Actions repeats the configured checks on `ubuntu-24.04` with a PostgreSQL service, SHA-pinned actions and read-only permissions. Actual counts, results and limits belong in [VERIFICATION.md](VERIFICATION.md); local results do not establish a successful remote run. The workflow is explained in [CI_CD.md](CI_CD.md).
 
 ## Decisions
 
@@ -116,6 +121,7 @@ Architecture decisions are recorded as ADRs in [adr/](adr/):
 
 - [ADR 0003: Reproducible demo data and safe loading](adr/0003-reproducible-demo-data-and-safe-loading.md) — standard-library seeded generation, exact monetary serialization, manifest integrity, atomic loading and quality checks.
 - [ADR 0004: Deterministic analytics core](adr/0004-deterministic-analytics-core.md) — explicit period semantics, independent SQL aggregates, exact comparisons, signed contributions and a snapshot-consistent CLI without Pandas or DuckDB.
+- [ADR 0005: Anomaly detection and offline evaluation](adr/0005-anomaly-detection-and-offline-evaluation.md) — full-month retrospective rules, seeded Isolation Forest, exact feature extraction and separate positive-scenario coverage.
 
 ## Architecture
 
@@ -140,8 +146,12 @@ The default bundle contains 640 customers, 64 products, 20,000 orders and daily 
 
 The five injected scenarios are valid business events, not deliberately invalid rows: reduced paid pump quantities in September (A01), 35% discounts on paid valve lines in the South in August (A02), additional refunds of 30% of rounded compressor line amounts in July (A03), zero snapshots for one pump on 10–19 September (A04), and one unusually large paid sensor line of 500 units in June (A05). A01 and A04 coexist in the dataset; this does not prove a causal stockout explanation for the sales drop.
 
-`ground_truth.json` records baseline and observed deterministic evidence for evaluation. It is not a runtime input for the future LLM agent. Read-only data quality checks detect orders without lines, aggregate refunds above a rounded discounted line amount, refunds on unpaid orders and refunds processed before payment. A successful quality check establishes these rules only; it does not mean that sales behaviour is statistically ordinary.
+`ground_truth.json` records baseline and observed deterministic evidence for evaluation. Runtime detection and the future LLM agent never read it. Read-only data quality checks detect orders without lines, aggregate refunds above a rounded discounted line amount, refunds on unpaid orders and refunds processed before payment. A successful quality check establishes these rules only; it does not mean that sales behaviour is statistically ordinary.
+
+Stage 05 extracts monthly category and region/category features, paid lines and stock snapshots directly from the current database. Robust statistics compare each complete calendar month with at least six other months of its series using a median and MAD. A zero-MAD fallback, an upper IQR fence for line quantities and a three-day consecutive-zero stock rule make their thresholds explicit. Isolation Forest fits and scores at least 16 usable complete-month rows using quantity and paid-sales ratios to series medians, weighted discount rate and refund/sales ratio. Its default seed is 42, with 100 trees, one worker and automatic contamination.
+
+All findings are investigation candidates. The analysis is retrospective and is not forecasting or an unseen temporal holdout. Partial monthly buckets are retained as features but excluded from monthly detection. Only the separate offline evaluator reads the answer key and matches findings to A01–A05 by scope. This measures coverage of five injected positives, not precision, false-positive rate or independent generalisation. Additional candidates cannot automatically be labelled incorrect.
 
 ## Next steps
 
-Stage 05 adds anomaly detection using the Stage 04 metric contract. Statistical signals and Isolation Forest will produce evidence to investigate; they must not infer causation from coincident events or read `ground_truth.json` at runtime. The metrics REST API is Stage 06, followed by the LLM agent in Stage 07.
+Stage 06 exposes the existing exact metrics and analysis through a REST API with validated inputs and stable JSON contracts. The LLM agent follows in Stage 07 and must use tool evidence, distinguish hypotheses from facts, and keep evaluation ground truth outside runtime.

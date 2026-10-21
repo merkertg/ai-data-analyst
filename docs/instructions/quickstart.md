@@ -2,7 +2,7 @@
 
 [← README](../../README.md) · [All documentation](../../README.md#documentation)
 
-Install uv, start PostgreSQL, apply migrations, start the API and check that it is ready. Detailed walkthroughs in Russian are in the [Stage 01](../STAGE_01.md), [Stage 02](../STAGE_02.md), [Stage 03](../STAGE_03.md) and [Stage 04](../STAGE_04.md) guides.
+Install uv, start PostgreSQL, apply migrations, start the API and check that it is ready. Detailed walkthroughs in Russian are in the [Stage 01](../STAGE_01.md), [Stage 02](../STAGE_02.md), [Stage 03](../STAGE_03.md), [Stage 04](../STAGE_04.md) and [Stage 05](../STAGE_05.md) guides.
 
 ## Requirements
 
@@ -80,6 +80,21 @@ uv run python -m app.analytics \
 ```
 
 The read-only CLI prints exact JSON metrics, monthly buckets, comparisons and contributions; monetary values are strings. Dates use a half-open Moscow interval. Use `--dimension region` for regional contributions; omit both comparison arguments for a summary and monthly series. No API server is required. See [Analytics](analytics.md) for definitions and manual sample answers.
+
+## Detect anomaly candidates
+
+Use the full generated history for monthly detection:
+
+```bash
+uv run python -m app.analytics.anomalies \
+  --start 2026-01-01 --end 2026-10-01 \
+  --output /tmp/anomalies.json
+uv run python -m app.analytics.evaluate \
+  --report /tmp/anomalies.json \
+  --ground-truth data/demo/ground_truth.json
+```
+
+The first command reads current data without changing it and never reads the answer key. The second command is an offline coverage check for the five injected scenarios. Coverage is not precision or proof of causation. `--seed 42` is the model default; output paths must be new and are never overwritten. See [Anomaly detection](anomalies.md) for thresholds, full-month requirements and evaluation limits. No API server or LLM key is needed.
 
 ## Start the API
 

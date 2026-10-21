@@ -46,6 +46,9 @@ Fixtures: `migrated_engine` builds the schema once per run with `alembic downgra
 | `tests/integration/test_demo_data.py`, `tests/integration/test_data_quality.py` | Empty-table loading, transaction rollback, existing-data refusal and cross-table quality violations |
 | `tests/test_analytics_models.py`, `tests/test_analytics_cli.py` | Moscow periods, validation, exact/undefined percentage changes, dimensions, safe errors and JSON decimal serialization |
 | `tests/integration/test_analytics.py` | Manual sample metrics, line-first rounding, independent sales/refund counts, Moscow boundaries, empty/partial months, comparisons, signed contributions and read-only behaviour |
+| `tests/test_detection.py` | Positive and ordinary robust-statistic/IQR cases, zero MAD, short histories, full-month filtering, stockout gaps and Isolation Forest reproducibility |
+| `tests/test_anomalies_cli.py`, `tests/test_anomaly_evaluation.py` | Input validation, safe errors, exact report JSON, exclusive report creation and separate positive-scenario coverage matching |
+| `tests/integration/test_anomaly_features.py` | Exact SQL features, independent refund/sales aggregates, Moscow boundaries, partial buckets, line and stock scopes and read-only behaviour |
 
 Useful options:
 
@@ -73,6 +76,20 @@ uv run pytest tests/integration/test_analytics.py
 ```
 
 These test commands follow the same `_test` database safety rules above. They never use the development database for integration fixtures.
+
+## Anomaly detection and offline evaluation
+
+See [Anomaly detection](anomalies.md) for the detector and evaluator commands, defaults and limitations.
+
+```bash
+uv run pytest tests/test_detection.py tests/test_anomalies_cli.py \
+  tests/test_anomaly_evaluation.py
+uv run pytest tests/integration/test_anomaly_features.py
+```
+
+The same `_test` database safety rules apply. The detector never reads evaluation labels; the separate evaluator reads a report and `ground_truth.json` from the same bundle. Integration tests verify features against hand-computed data. Model tests use fixed numerical examples and seeds. Monthly rules and Isolation Forest skip partial calendar months; tests must preserve that distinction from clipped feature extraction.
+
+For a full-bundle smoke check, use a dedicated empty `_test` database, explicitly point the CLIs at it, load the generated bundle, run quality checks, detect with seed 42 and evaluate separately. Repeat detection into a different new output path to compare JSON bytes; an existing output file is refused. Coverage of A01–A05 measures five injected positive scenarios. It is not precision, a false-positive rate or independent model quality, and additional candidates are not automatically incorrect. Record actual results in [VERIFICATION.md](../VERIFICATION.md); a local run does not confirm GitHub Actions.
 
 ## Migrations
 

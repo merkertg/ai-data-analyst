@@ -33,6 +33,9 @@ CONTENTS = [
     ("Точные показатели", "Exact metrics"),
     ("Месяцы и сравнения", "Months and comparisons"),
     ("Вклады групп", "Group contributions"),
+    ("Статистические кандидаты", "Statistical candidates"),
+    ("Isolation Forest", "Isolation Forest"),
+    ("Отдельная оценка сценариев", "Offline scenario evaluation"),
     ("CI на GitHub Actions", "CI on GitHub Actions"),
     ("Шпаргалка команд", "Command cheat sheet"),
     ("Типичные ошибки", "Common errors"),
@@ -45,6 +48,7 @@ STAGE_01_SECTIONS = range(2, 12)
 STAGE_02_SECTIONS = range(12, 21)
 STAGE_03_SECTIONS = range(21, 24)
 STAGE_04_SECTIONS = range(24, 27)
+STAGE_05_SECTIONS = range(27, 30)
 
 
 def title(number: int) -> str:

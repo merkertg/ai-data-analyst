@@ -12,6 +12,7 @@ dependencies = [
     "fastapi>=0.142.2",            # Маршруты API, проверка данных, страница /docs.
     "psycopg[binary]>=3.2,<4",     # Драйвер PostgreSQL 3-й версии для SQLAlchemy.
     "pydantic-settings>=2.15.0",   # Настройки из переменных окружения и .env.
+    "scikit-learn>=1.7,<2",
     "sqlalchemy>=2.0,<3",          # Модели таблиц, соединения, сессии и транзакции.
     "uvicorn[standard]>=0.54.0",   # ASGI-сервер, который слушает порт и вызывает app.
 ]
@@ -63,3 +64,8 @@ select = ["E", "F", "I", "UP", "B"]
 [tool.mypy]
 strict = true
 plugins = ["pydantic.mypy"]
+
+# Scikit-learn does not ship typing metadata; keep this exception vendor-only.
+[[tool.mypy.overrides]]
+module = ["sklearn.ensemble"]
+ignore_missing_imports = true

@@ -282,21 +282,21 @@ def add_stage04(story):
                 "Интеграционные тесты — только TEST_DATABASE_URL с суффиксом "
                 "_test. Проверяются ручные суммы, двойной счёт, округление, "
                 "Московские границы, пустые месяцы, сравнения и вклады. "
-                "Фактические результаты — раздел 31 и docs/VERIFICATION.md.",
+                "Фактические результаты — раздел 34 и docs/VERIFICATION.md.",
                 "Integration tests use TEST_DATABASE_URL ending in _test only. "
                 "They cover manual totals, double counting, rounding, Moscow "
                 "boundaries, empty months, comparisons and contributions. "
-                "Actual outcomes are in section 31 and docs/VERIFICATION.md.",
+                "Actual outcomes are in section 34 and docs/VERIFICATION.md.",
             ),
             SMALL,
         ),
         Spacer(1, 7),
         callout(
             tr(
-                "<b>Дальше:</b> поиск аномалий — этап 05; REST API метрик — 06; "
+                "<b>Следующие этапы:</b> поиск аномалий — 05; REST API метрик — 06; "
                 "LLM-агент — 07. Изменение выручки по группе само по себе "
                 "не доказывает причину падения.",
-                "<b>Next:</b> anomaly detection is Stage 05; the metrics REST API "
+                "<b>Following stages:</b> anomaly detection is Stage 05; the metrics REST API "
                 "is Stage 06; the LLM agent is Stage 07. A group's revenue change "
                 "alone does not prove why sales fell.",
             ),

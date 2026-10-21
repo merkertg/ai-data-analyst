@@ -25,6 +25,11 @@ app/
     models.py            # Moscow date periods and exact metric/comparison result types
     service.py           # Independent SQL aggregates, monthly metrics, comparisons, contributions
     __main__.py          # Read-only snapshot-consistent JSON CLI (python -m app.analytics)
+    anomaly_models.py    # Exact feature and anomaly report types
+    anomaly_features.py  # Independent SQL aggregates for monthly, line and stock features
+    detection.py         # Robust statistics, IQR, consecutive stockouts and Isolation Forest
+    anomalies.py         # Read-only detection CLI; never reads evaluation labels
+    evaluate.py          # Separate offline matching against injected positive scenarios
 migrations/
   env.py                 # Alembic: database URL from settings or tests, model metadata
   script.py.mako         # Template for new migration files
@@ -38,6 +43,8 @@ tests/
   test_ready.py, test_session.py, test_models.py       # Stage 02 unit tests, no database
   test_demo_data.py, test_data_quality.py              # Stage 03 generation, bundle and quality unit tests
   test_analytics_models.py, test_analytics_cli.py      # Stage 04 periods, comparisons, CLI validation/JSON
+  test_detection.py, test_anomalies_cli.py             # Stage 05 rules, model, report CLI and safe output
+  test_anomaly_evaluation.py                          # Separate positive-scenario coverage matching
   integration/           # Real PostgreSQL from TEST_DATABASE_URL (*_test only)
     conftest.py          # Safety checks, migrated schema, rolled-back session per test
     test_migrations.py   # Upgrade, downgrade, alembic check, /ready
@@ -46,12 +53,13 @@ tests/
     test_demo_data.py    # Loader, rollback, protected existing data and exact values
     test_data_quality.py # Cross-table violations on real PostgreSQL
     test_analytics.py    # Exact metrics, boundaries, monthly buckets, comparisons and contributions
+    test_anomaly_features.py # Exact monthly/line/stock SQL features and read-only behaviour
 scripts/
   build_guide.py         # Builds the PDF guide in Russian and English (ReportLab, not a project dependency)
   guide/                 # Guide modules: language pairs, layout, diagrams, project data, section texts
 docs/
   instructions/          # Short task-oriented instructions (English)
-  STAGE_01.md ... STAGE_04.md   # Detailed stage guides (Russian)
+  STAGE_01.md ... STAGE_05.md   # Detailed stage guides (Russian)
   CI_CD.md               # CI/CD guide (Russian)
   APPROACH.md            # Problem, solution, data model and architecture
   adr/                   # Architecture decision records
@@ -68,17 +76,17 @@ pyproject.toml           # Project metadata, dependencies, pytest/Ruff/mypy/uv s
 uv.lock                  # Exact versions and hashes of all resolved packages
 ```
 
-Planned additions follow the course plan: anomaly detection in `app/analytics/` in Stage 05, `app/api/` in Stage 06, `app/agents/` and `app/llm/` in Stage 07, `frontend/` in Stage 08, and `tests/evals/`, `tests/security/` in Stage 09.
+Stage 05 detection and offline evaluation live in `app/analytics/`. Planned additions follow the course plan: `app/api/` in Stage 06, `app/agents/` and `app/llm/` in Stage 07, `frontend/` in Stage 08, and `tests/evals/`, `tests/security/` in Stage 09.
 
 ## Configuration in pyproject.toml
 
 | Section | Purpose |
 | --- | --- |
-| `[project]` | Name, version, Python requirement, runtime dependencies (FastAPI, Uvicorn, pydantic-settings, SQLAlchemy, psycopg, Alembic) |
+| `[project]` | Name, version, Python requirement, runtime dependencies (FastAPI, Uvicorn, pydantic-settings, SQLAlchemy, psycopg, Alembic, scikit-learn) |
 | `[dependency-groups] dev` | Test and check tools: httpx2, mypy, pytest, ruff |
 | `[tool.uv]` | `exclude-newer`: only PyPI releases older than the cutoff date |
 | `[tool.pytest.ini_options]` | `testpaths`, `pythonpath = ["."]`, `--strict-markers`, the `integration` marker |
 | `[tool.ruff]`, `[tool.ruff.lint]` | Python 3.12 target, line length 88, rules `E F I UP B` |
 | `[tool.mypy]` | Strict mode with the Pydantic plugin |
 
-The project is an application, not a package: it was created with `uv init --app --no-package`, has no `[build-system]`, and is not installed into `.venv`. The reasons are recorded in [ADR 0001](../adr/0001-application-layout-and-tooling.md); the database decisions are in [ADR 0002](../adr/0002-postgresql-schema-and-migrations.md); generation and safe loading are in [ADR 0003](../adr/0003-reproducible-demo-data-and-safe-loading.md); the deterministic analytics contract is in [ADR 0004](../adr/0004-deterministic-analytics-core.md).
+The project is an application, not a package: it was created with `uv init --app --no-package`, has no `[build-system]`, and is not installed into `.venv`. The reasons are recorded in [ADR 0001](../adr/0001-application-layout-and-tooling.md); the database decisions are in [ADR 0002](../adr/0002-postgresql-schema-and-migrations.md); generation and safe loading are in [ADR 0003](../adr/0003-reproducible-demo-data-and-safe-loading.md); the deterministic analytics contract is in [ADR 0004](../adr/0004-deterministic-analytics-core.md); anomaly detection and offline coverage limits are in [ADR 0005](../adr/0005-anomaly-detection-and-offline-evaluation.md).
