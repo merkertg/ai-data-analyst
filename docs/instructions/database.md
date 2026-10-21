@@ -22,13 +22,13 @@ docker compose up --detach --wait db
 uv run alembic upgrade head
 ```
 
-`--wait` returns when the healthcheck (`pg_isready`) passes. The migration creates six tables and `alembic_version`. Verify:
+`--wait` returns when the healthcheck (`pg_isready`) passes. The current migration chain creates six domain tables, `reports`, `agent_runs` and `alembic_version`. Verify:
 
 ```bash
 uv run alembic current
 ```
 
-Expected output: `0002 (head)`. Migration `0001` creates the six domain tables; `0002` (Stage 06) adds the `reports` table for saved API reports. `curl http://127.0.0.1:8000/ready` returns `{"status":"ready","revision":"0002"}` while the API is running.
+Expected output: `0003 (head)`. Migration `0001` creates the six domain tables; `0002` (Stage 06) adds the `reports` table for saved API reports; `0003` (Stage 07) adds `agent_runs`, the AI analyst's investigation history. `curl http://127.0.0.1:8000/ready` returns `{"status":"ready","revision":"0003"}` while the API is running.
 
 ## Sample data
 
@@ -79,7 +79,7 @@ The same files are executed by `tests/integration/test_queries.py` and compared 
 2. Generate a migration and **read it**:
 
    ```bash
-   uv run alembic revision --autogenerate --rev-id 0003 -m "Describe the change"
+   uv run alembic revision --autogenerate --rev-id 0004 -m "Describe the change"
    ```
 
 3. Apply it and check that models and migrations match:

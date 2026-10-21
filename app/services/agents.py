@@ -1,7 +1,8 @@
 """Run the agent for a question and keep the investigation history.
 
-Every run is stored: a completed run with its verified report, a failed run
-with a public error and the partial trace of tools it managed to call.
+Completed runs and caught LLM failures are stored with their report or public
+error and partial trace. Pre-run configuration errors and an unavailable
+database do not produce a stored run.
 """
 
 import time

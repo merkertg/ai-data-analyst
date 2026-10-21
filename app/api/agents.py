@@ -66,8 +66,8 @@ def create_run(
 ) -> AgentRunOut:
     """Answer a question with tools and return the verified report.
 
-    Every run is stored. A failed run answers 413, 502 or 504 with its run_id,
-    so its partial trace can be read at /api/agent/runs/{run_id}.
+    Completed runs and caught LLM failures are stored. Failures include a run_id
+    when persistence succeeds; pre-run configuration and database failures do not.
     """
     settings = settings_factory()
     provider = provider_factory(settings)

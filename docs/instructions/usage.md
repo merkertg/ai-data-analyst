@@ -2,7 +2,7 @@
 
 [← README](../../README.md) · [All documentation](../../README.md#documentation)
 
-Endpoints after Stage 06 and how to call them. Start PostgreSQL, apply migrations (head is `0002`), load data and start the server with the [quickstart](quickstart.md) first. The detailed explanation in Russian is in the [Stage 06 guide](../STAGE_06.md).
+Endpoints after Stage 07 and how to call them. Start PostgreSQL, apply migrations (head is `0003`), load data and start the server with the [quickstart](quickstart.md) first. The detailed explanation in Russian is in the [Stage 06 guide](../STAGE_06.md).
 
 ## Endpoints
 
@@ -18,9 +18,11 @@ Endpoints after Stage 06 and how to call them. Start PostgreSQL, apply migration
 | `POST /api/reports` | Compute and save a comparison or anomaly report |
 | `GET /api/reports/{report_id}` | A saved report exactly as stored |
 | `GET /api/reports` | Saved reports, newest first, without result bodies |
+| `POST /api/agent/runs` | Ask the AI analyst a question; see [AI analyst](agent.md) |
+| `GET /api/agent/runs/{run_id}`, `GET /api/agent/runs` | A stored investigation; the history, newest first |
 | `GET /docs`, `GET /redoc`, `GET /openapi.json` | Interactive and machine-readable documentation |
 
-All analytics routes are read-only (`REPEATABLE READ READ ONLY`) except `POST /api/reports`. There is no authentication yet: run the server on `127.0.0.1` only. Access control arrives in Stage 09.
+All analytics routes are read-only (`REPEATABLE READ READ ONLY`) except `POST /api/reports` and `POST /api/agent/runs`, which store a report or a run; the agent's tools themselves only read. There is no authentication yet: run the server on `127.0.0.1` only. Access control arrives in Stage 09.
 
 ## Parameters
 
@@ -31,9 +33,9 @@ Periods are half-open Moscow date intervals `[start, end)`: `start=2026-09-01&en
 | `start`, `end` | all analytics routes | Required ISO dates, `start < end`, at most 120 calendar months |
 | `compare_start`, `compare_end` | `revenue`, `orders` (optional); `categories`, `regions` (required) | Same rules; both or neither |
 | `seed` | `anomalies` | Integer 0–4294967295, default `42` |
-| `limit`, `offset` | `GET /api/reports` | `limit` 1–100 (default 20), `offset` ≥ 0 |
+| `limit`, `offset` | `GET /api/reports`, `GET /api/agent/runs` | `limit` 1–100 (default 20), `offset` ≥ 0 |
 
-Unknown query parameters are rejected with 422.
+Metric and analytics query models reject unknown parameters with 422. The report and agent history routes use individual pagination parameters and do not share that extra-field rule. Agent question bodies reject extra fields; their limits are described in [AI analyst](agent.md).
 
 ## Examples
 
@@ -46,7 +48,7 @@ curl "$B/api/analytics/regions?start=2026-09-01&end=2026-10-01&compare_start=202
 curl "$B/api/analytics/anomalies?start=2026-01-01&end=2026-10-01&seed=42"
 ```
 
-Verified on the seed 42 demo dataset (20,000 orders): September vs August net revenue `-165497371.86` (`-26.18`%), pumps account for `83.75`% of the decline, and the detector returns 33 candidates. Money values are JSON strings, for example `"466678757.35"`; undefined values (AOV without orders, a percentage of a zero baseline) are `null`. Every response states `"currency": "RUB"` and `"timezone": "Europe/Moscow"`.
+Verified on the seed 42 demo dataset (20,000 orders): September vs August net revenue `-165497371.86` (`-26.18`%), pumps account for `83.75`% of the decline, and the detector returns 33 candidates. Money values are JSON strings, for example `"466678757.35"`; undefined values (AOV without orders, a percentage of a zero baseline) are `null`. Metric and contribution responses state `"currency": "RUB"` and `"timezone": "Europe/Moscow"`; anomaly results and stored records have their own shapes.
 
 ## Saved reports
 
@@ -73,7 +75,7 @@ curl -i "$B/ready"
 
 | Situation | Response |
 | --- | --- |
-| Database running, migrations applied | `200` `{"status":"ready","revision":"0002"}` |
+| Database running, migrations applied | `200` `{"status":"ready","revision":"0003"}` |
 | `docker compose stop db` | `503` `{"detail":"Database is not ready"}` |
 | Database started again | `200` — the pool reconnects without restarting the API |
 
@@ -84,11 +86,11 @@ curl -i "$B/ready"
 | Code | When |
 | --- | --- |
 | `200 OK` | Successful read |
-| `201 Created` | Report saved; see the `location` header |
-| `404 Not Found` | Unknown path, or an unknown report UUID (`{"detail":"Report not found"}`) |
+| `201 Created` | Report or completed agent run saved; see the `location` header |
+| `404 Not Found` | Unknown path, report UUID (`{"detail":"Report not found"}`) or agent run UUID (`{"detail":"Agent run not found"}`) |
 | `405 Method Not Allowed` | Wrong method, for example `POST /health` |
 | `422 Unprocessable Content` | Invalid parameters or body; the database is not touched |
 | `500 Internal Server Error` | Unexpected server error, without details |
-| `503 Service Unavailable` | `DATABASE_URL` not set or the database unreachable (`{"detail":"Database is not ready"}`) |
+| `503 Service Unavailable` | Database unavailable (`{"detail":"Database is not ready"}`); agent settings, tool data or provider unavailable use their own fixed messages |
 
-The 503 text is the same for every cause: the database address and driver errors never reach the client.
+Database readiness failures use one fixed 503 text so the database address and driver errors do not reach the client. Agent routes also return `413`, `502` and `504`; see [AI analyst](agent.md) for their meaning and when a failure contains `run_id`.

@@ -27,10 +27,11 @@ Evidence
 - Each fact cites evidence: the call_id of a successful tool call, the dotted
   field path inside its data (for example net_revenue.absolute or
   contributions.0.delta) and the value at that path copied exactly.
-- A number written in a fact, hypothesis, recommendation or the summary must be
-  one of the evidence values. You may drop the minus sign ("fell by 291500.00")
-  and group digits with spaces. Name months with words; do not write counts or
-  ordinal numbers that no tool returned.
+- A number written in a fact, hypothesis, recommendation, limitation or the
+  summary must be one of the evidence values. You may drop the minus sign
+  ("fell by 291500.00") and group digits with spaces. Name months with words;
+  calendar years need an adjacent month name or an explicit word "year" or
+  "год". Do not write counts or ordinal numbers that no tool returned.
 - Hypotheses are possible explanations the data suggests but does not prove,
   such as a stock-out next to falling sales. Anomaly candidates are not causes.
 - If a tool fails or data is missing, say so in limitations. Do not guess.

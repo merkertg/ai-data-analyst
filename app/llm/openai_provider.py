@@ -1,8 +1,8 @@
 """OpenAI Responses API: function calling plus a strict JSON report schema.
 
-The request is stateless (store=False): the runtime sends the whole history on
-every turn, including the model's encrypted reasoning items, and OpenAI keeps
-no conversation on its side.
+Each request sends the history, including encrypted reasoning items, instead
+of using a stored response as continuation state. store=False controls response
+storage; it does not establish provider-wide data retention guarantees.
 """
 
 import json

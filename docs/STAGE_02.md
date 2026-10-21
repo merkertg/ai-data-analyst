@@ -636,9 +636,10 @@ def test_invalid_row_is_rejected(db_session: Session, case: str) -> None:
 `true`): товар сняли с продажи, но история осталась.
 
 1. Добавь поле в модель `Product`.
-2. Создай следующую миграцию. После этапа 06 номер `0002` занят таблицей
-   сохранённых отчётов, поэтому следующий свободный — `0003`:
-   `uv run alembic revision --autogenerate --rev-id 0003 -m "Add product is_active"`.
+2. Создай следующую миграцию. Номер возьми следующий за текущей головой:
+   её покажет `uv run alembic heads` (после этапа 07 это `0003`, значит
+   новая — `0004`):
+   `uv run alembic revision --autogenerate --rev-id 0004 -m "Add product is_active"`.
    Прочитай файл: есть ли `server_default`, чтобы существующие строки получили `true`?
 3. Примени её, затем проверь `uv run alembic check` и откат `downgrade -1`.
 4. Добавь тест в `tests/test_models.py` или интеграционный тест.

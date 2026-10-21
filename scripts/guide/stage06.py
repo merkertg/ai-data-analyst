@@ -161,14 +161,14 @@ def add_stage06(story):
                 "через Depends. <b>ReadSession</b> для всех GET — транзакция "
                 "REPEATABLE READ READ ONLY: все запросы одного ответа видят одни "
                 "данные, а запись отклоняет сама PostgreSQL. <b>WriteSession</b> "
-                "нужна только POST /api/reports; маршрут вызывает commit явно, "
+                "нужна для сохранения отчётов и запусков агента; commit явный, "
                 "ошибка откатывает транзакцию. Тесты подменяют обе через "
                 "app.dependency_overrides сессией базы *_test.",
                 "A route declares what it needs and FastAPI calls the dependency "
                 "through Depends. <b>ReadSession</b> for every GET is a REPEATABLE "
                 "READ READ ONLY transaction: all queries of one response see the "
                 "same data and PostgreSQL itself rejects writes. <b>WriteSession</b> "
-                "is used only by POST /api/reports; the route commits explicitly "
+                "stores reports and agent runs; the code commits explicitly "
                 "and an error rolls back. Tests replace both through "
                 "app.dependency_overrides with a *_test database session.",
             ),
@@ -187,26 +187,32 @@ def add_stage06(story):
                 "FastAPI вызывает зависимости, даже когда параметры неверны. "
                 "Без DATABASE_URL запрос с end ≤ start получал 503 вместо 422, "
                 "а с базой — лишнее соединение. Исправление — <b>LazySession</b>: "
-                "engine выбирается при первом SQL, а не при создании сессии.",
+                "engine выбирается при первом SQL и сохраняется. Один bind "
+                "нужен, чтобы следующие запросы использовали то же соединение.",
                 "The first version opened an ordinary Session. Tests showed that "
                 "FastAPI calls dependencies even when parameters are invalid. "
                 "Without DATABASE_URL a request with end ≤ start got 503 instead "
                 "of 422, and with a database it opened a needless connection. The "
                 "fix is <b>LazySession</b>: the engine is chosen at the first SQL "
-                "statement, not when the session is created.",
+                "statement and cached. A stable bind makes later statements "
+                "reuse the same connection.",
             ),
             BODY_S,
         ),
         Spacer(1, 4),
         code_block(
             "class LazySession(Session):\n"
+            "    # __init__: self._resolved_engine = None\n"
             "    def get_bind(self, mapper=None, **kw):\n"
-            "        engine = get_engine()  # first SQL statement only\n"
-            "        if self.read_only:\n"
-            "            return engine.execution_options(\n"
-            '                isolation_level="REPEATABLE READ", postgresql_readonly=True\n'
+            "        if self._resolved_engine is None:\n"
+            "            engine = get_engine()\n"
+            "            self._resolved_engine = (\n"
+            "                engine.execution_options(\n"
+            '                    isolation_level="REPEATABLE READ",\n'
+            "                    postgresql_readonly=True,\n"
+            "                ) if self.read_only else engine\n"
             "            )\n"
-            "        return engine"
+            "        return self._resolved_engine"
         ),
         Spacer(1, 6),
         p(
@@ -214,13 +220,13 @@ def add_stage06(story):
                 "<b>Почему def, а не async def.</b> Session и psycopg синхронные; "
                 "обычную функцию FastAPI выполняет в пуле потоков, и ожидание базы "
                 "не мешает другим запросам. async def с синхронной сессией "
-                "заблокировал бы цикл событий всего сервера. Асинхронность "
-                "понадобится вместе с долгими вызовами LLM на этапе 07.",
+                "заблокировал бы цикл событий всего сервера. Этап 07 применяет "
+                "тот же подход к синхронному SDK модели.",
                 "<b>Why def and not async def.</b> Session and psycopg are "
                 "synchronous; FastAPI runs a plain function in a thread pool, so "
                 "waiting for the database does not block other requests. async def "
                 "with a synchronous session would block the whole server's event "
-                "loop. Async becomes relevant with long LLM calls in Stage 07.",
+                "loop. Stage 07 applies the same approach to the synchronous model SDK.",
             ),
             SMALL,
         ),

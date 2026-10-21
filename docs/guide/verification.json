@@ -1,7 +1,7 @@
 {
   "checked_at": "2026-10-21",
-  "base_commit": "e27e587 + worktree",
-  "stage": 6,
+  "base_commit": "023f432 + worktree",
+  "stage": 7,
   "environment": {
     "os": {
       "ru": "macOS, Apple Silicon",
@@ -13,13 +13,13 @@
     "postgres": "17"
   },
   "tests": {
-    "total": 257,
-    "unit": 156,
-    "integration": 101,
-    "passed": 257,
+    "total": 375,
+    "unit": 260,
+    "integration": 115,
+    "passed": 375,
     "failed": 0,
     "skipped": 0,
-    "seconds": 3.9
+    "seconds": 4.57
   },
   "checks": [
     {
@@ -29,32 +29,20 @@
       },
       "command": "CI=true TEST_DATABASE_URL=... pytest",
       "result": {
-        "ru": "257 passed: 156 unit + 101 integration",
-        "en": "257 passed: 156 unit + 101 integration"
+        "ru": "375 passed: 260 unit + 115 integration",
+        "en": "375 passed: 260 unit + 115 integration"
       },
       "status": "pass"
     },
     {
       "name": {
-        "ru": "Линтер",
-        "en": "Lint"
+        "ru": "Линтер / формат",
+        "en": "Lint / format"
       },
-      "command": "ruff check .",
+      "command": "ruff check; ruff format --check",
       "result": {
-        "ru": "All checks passed",
-        "en": "All checks passed"
-      },
-      "status": "pass"
-    },
-    {
-      "name": {
-        "ru": "Формат",
-        "en": "Format"
-      },
-      "command": "ruff format --check .",
-      "result": {
-        "ru": "103 файла, включая блоки Markdown",
-        "en": "103 files, Markdown blocks included"
+        "ru": "Все проверки пройдены; 134 файла",
+        "en": "All checks passed; 134 files"
       },
       "status": "pass"
     },
@@ -65,8 +53,8 @@
       },
       "command": "mypy app tests migrations",
       "result": {
-        "ru": "Нет ошибок в 61 файле",
-        "en": "No issues in 61 files"
+        "ru": "Нет ошибок в 88 файлах",
+        "en": "No issues in 88 files"
       },
       "status": "pass"
     },
@@ -77,8 +65,8 @@
       },
       "command": "alembic upgrade / check / downgrade",
       "result": {
-        "ru": "Схема 0002; 0002 откатывается отдельно; расхождений нет",
-        "en": "Schema 0002; 0002 rolls back alone; no model drift"
+        "ru": "Схема 0003; расхождений нет; откат успешен",
+        "en": "Schema 0003; no drift; rollback passed"
       },
       "status": "pass"
     },
@@ -89,56 +77,56 @@
       },
       "command": "uv lock --check --offline",
       "result": {
-        "ru": "52 пакета; newest upload 2026-10-03",
-        "en": "52 packages; newest upload 2026-10-03"
+        "ru": "55 пакетов; OpenAI SDK 3.24.0",
+        "en": "55 packages; OpenAI SDK 3.24.0"
       },
       "status": "pass"
     },
     {
       "name": {
-        "ru": "API на demo",
-        "en": "API on demo"
+        "ru": "Агент на demo",
+        "en": "Agent on demo"
       },
-      "command": "uvicorn + curl /api/..., seed 42",
+      "command": "POST /api/agent/runs, seed 42",
       "result": {
-        "ru": "Сентябрь к августу −165497371.86 (−26.18%); 33 кандидата",
-        "en": "Sep vs Aug −165497371.86 (−26.18%); 33 candidates"
+        "ru": "20 000 заказов; 3 отчёта; 4 шага, 7 вызовов",
+        "en": "20,000 orders; 3 reports; 4 steps, 7 calls"
       },
       "status": "pass"
     },
     {
       "name": {
-        "ru": "Отчёты",
-        "en": "Reports"
+        "ru": "История",
+        "en": "History"
       },
-      "command": "POST /api/reports, GET location",
+      "command": "GET runs, GET location",
       "result": {
-        "ru": "201; GET вернул то же тело",
-        "en": "201; GET returned the same body"
+        "ru": "3 запуска; JSON без изменений",
+        "en": "3 runs; identical JSON on GET"
       },
       "status": "pass"
     },
     {
       "name": {
-        "ru": "Без базы",
-        "en": "No database"
+        "ru": "Снимок",
+        "en": "Snapshot"
       },
-      "command": "DATABASE_URL to a closed port",
+      "command": "LazySession + concurrent INSERT",
       "result": {
-        "ru": "Верный запрос 503, неверный 422",
-        "en": "Valid request 503, invalid 422"
+        "ru": "Один backend; новое значение не видно",
+        "en": "One backend; new row remains invisible"
       },
       "status": "pass"
     },
     {
       "name": {
-        "ru": "Чистый клон",
-        "en": "Clean clone"
+        "ru": "OpenAI без сети",
+        "en": "Offline OpenAI"
       },
-      "command": "git clone e27e587 + CI steps",
+      "command": "pytest tests/test_openai_provider.py",
       "result": {
-        "ru": "257 passed; миграции вверх, check, вниз",
-        "en": "257 passed; migrations up, check, down"
+        "ru": "Поддельный SDK: формат, разбор, ошибки",
+        "en": "Fake SDK: format, parsing, errors"
       },
       "status": "pass"
     }
@@ -152,54 +140,33 @@
     {
       "request": "GET /ready",
       "status": "200 OK",
-      "body": "{\"status\":\"ready\",\"revision\":\"0002\"}"
+      "body": "{\"status\":\"ready\",\"revision\":\"0003\"}"
     },
     {
-      "request": "GET /api/metrics/revenue",
-      "status": "200 OK",
-      "body": {
-        "ru": "\"net_revenue\":\"466678757.35\"; к августу −165497371.86 (−26.18%)",
-        "en": "\"net_revenue\":\"466678757.35\"; vs August −165497371.86 (−26.18%)"
-      }
-    },
-    {
-      "request": "GET /api/analytics/categories",
-      "status": "200 OK",
-      "body": {
-        "ru": "pumps 83.75%, compressors 15.90%, sensors 0.18%, valves 0.17%",
-        "en": "pumps 83.75%, compressors 15.90%, sensors 0.18%, valves 0.17%"
-      }
-    },
-    {
-      "request": "GET /api/analytics/anomalies",
-      "status": "200 OK",
-      "body": "\"seed\":42, \"finding_count\":33"
-    },
-    {
-      "request": "POST /api/reports",
+      "request": "POST /api/agent/runs (Sep)",
       "status": "201 Created",
+      "body": "-165497371.86 (-26.18%); pumps 83.75%"
+    },
+    {
+      "request": "POST /api/agent/runs (Jul)",
+      "status": "201 Created",
+      "body": "-80258104.27 (-13.60%); refunds 30.28%"
+    },
+    {
+      "request": "GET /api/agent/runs",
+      "status": "200 OK",
       "body": {
-        "ru": "location: /api/reports/<uuid>; GET отдал то же тело",
-        "en": "location: /api/reports/<uuid>; GET returned the same body"
+        "ru": "3 запуска; GET по id совпал",
+        "en": "3 runs; GET by id matched"
       }
     },
     {
-      "request": "GET /api/reports/<unknown>",
-      "status": "404 Not Found",
-      "body": "{\"detail\":\"Report not found\"}"
-    },
-    {
-      "request": "GET /api/metrics/revenue end < start",
+      "request": "POST /api/agent/runs: \"?\"",
       "status": "422 Unprocessable Content",
-      "body": "\"period: start must be earlier than the exclusive end\""
-    },
-    {
-      "request": {
-        "ru": "GET /api/... без базы",
-        "en": "GET /api/... without a database"
-      },
-      "status": "503 Service Unavailable",
-      "body": "{\"detail\":\"Database is not ready\"}"
+      "body": {
+        "ru": "Вопрос слишком короткий; без SQL",
+        "en": "Question too short; no SQL"
+      }
     },
     {
       "request": "POST /health",
@@ -215,22 +182,22 @@
   "remote_ci": {
     "status": "not_verified",
     "detail": {
-      "ru": "Этап 06 проверен локально: код — коммит e27e587, документация — рабочее дерево поверх него. Коммиты этапа 06 ещё не отправлены на GitHub, поэтому результат GitHub Actions для них не подтверждён.",
-      "en": "Stage 06 was checked locally: the code is commit e27e587 and the documentation is the working tree on top of it. Stage 06 commits are not pushed to GitHub yet, so GitHub Actions has not confirmed them."
+      "ru": "Этап 07 проверен локально; удалённый запуск не подтверждён. Зелёный CI этапа 06 для 63f3550 ранее подтверждён пользователем.",
+      "en": "Stage 07 passed locally; its remote run is not confirmed. The user previously confirmed green Stage 06 CI for 63f3550."
     }
   },
   "remaining": [
     {
-      "ru": "Этап 07: AI-агент, который вызывает эти функции как инструменты и объясняет точные числа.",
-      "en": "Stage 07: an AI agent that calls these functions as tools and explains the exact numbers."
+      "ru": "Этап 08: интерфейс Streamlit.",
+      "en": "Stage 08: a Streamlit UI."
     },
     {
-      "ru": "Отправить коммиты и подтвердить GitHub Actions; локальный прогон не заменяет удалённый CI.",
-      "en": "Push the commits and confirm GitHub Actions; local checks do not replace remote CI."
+      "ru": "Настоящая модель OpenAI не проверена: ключа нет. Подтвердить удалённый CI этапа 07.",
+      "en": "A real OpenAI model was not tested: no key. Confirm remote Stage 07 CI."
     },
     {
-      "ru": "У API нет авторизации: только 127.0.0.1 до этапа 09. Отчёты нельзя удалить, аномалии пересчитываются на каждый GET.",
-      "en": "The API has no authentication: 127.0.0.1 only until Stage 09. Reports cannot be deleted; anomalies are recomputed on every GET."
+      "ru": "Проверка чисел не доказывает смысл; SQL не прерывается по сроку. Авторизации пока нет: только 127.0.0.1.",
+      "en": "Number checks do not prove meaning; SQL is not cancelled at the deadline. No authentication yet: 127.0.0.1 only."
     }
   ],
   "dataset": {
@@ -257,12 +224,12 @@
   },
   "pdf": {
     "pages": {
-      "ru": 41,
-      "en": 41
+      "ru": 45,
+      "en": 45
     },
     "visual_review": {
-      "ru": "Все 41 страница обеих версий просмотрены; новые разделы 30–32, обложка и итоги дополнительно проверены крупно.",
-      "en": "All 41 pages in both versions were reviewed; new sections 30–32, the cover and final results were also inspected at full size."
+      "ru": "Все 45 страниц обеих версий просмотрены; обложка, разделы 31 и 33–36 и итоги проверены крупно.",
+      "en": "All 45 pages in each version reviewed; cover, sections 31 and 33–36, and results inspected at full size."
     }
   },
   "analytics": {
@@ -331,6 +298,103 @@
       "regions": 14,
       "anomalies": 177,
       "post_report": 22
+    },
+    "checked_stage": 6
+  },
+  "agent": {
+    "database": "industrialflow_test",
+    "provider": "mock",
+    "rows": {
+      "customers": 640,
+      "products": 64,
+      "orders": 20000,
+      "order_items": 39871,
+      "refunds": 1760,
+      "inventory_snapshots": 17472
+    },
+    "quality": {
+      "passed": true,
+      "checks": [
+        {
+          "name": "empty_orders",
+          "violations": 0
+        },
+        {
+          "name": "excessive_refunds",
+          "violations": 0
+        },
+        {
+          "name": "refunds_on_unpaid_orders",
+          "violations": 0
+        },
+        {
+          "name": "refunds_before_payment",
+          "violations": 0
+        }
+      ]
+    },
+    "snapshot": {
+      "same_connection": true,
+      "concurrent_insert_invisible": true,
+      "isolation": "repeatable read",
+      "readonly": "on"
+    },
+    "ready": {
+      "status": "ready",
+      "revision": "0003"
+    },
+    "runs": [
+      {
+        "question": "Почему в сентябре 2026 года снизилась выручка?",
+        "status": 201,
+        "language": "ru",
+        "steps": 4,
+        "calls": 7,
+        "duration_ms": 311,
+        "values": [
+          "-165497371.86",
+          "-26.18",
+          "83.75"
+        ],
+        "history_matches": true
+      },
+      {
+        "question": "Why did revenue fall in July 2026?",
+        "status": 201,
+        "language": "en",
+        "steps": 4,
+        "calls": 7,
+        "duration_ms": 251,
+        "values": [
+          "-80258104.27",
+          "-13.60",
+          "99.81",
+          "30.28"
+        ],
+        "history_matches": true
+      },
+      {
+        "question": "Почему снизилась выручка?",
+        "status": 201,
+        "language": "ru",
+        "steps": 4,
+        "calls": 7,
+        "duration_ms": 281,
+        "values": [
+          "-165497371.86",
+          "-26.18",
+          "83.75"
+        ],
+        "history_matches": true
+      }
+    ],
+    "history_count": 3,
+    "invalid_question_status": 422,
+    "live_openai_verified": false,
+    "tool_count": 9,
+    "evidence_guard": {
+      "ru": "Ссылки точны; распознанные числа сверяются по величине, включая limitations. Годы исключены только в календарном контексте.",
+      "en": "Exact evidence references; recognised numeric magnitudes checked, including limitations. Only calendar-context years are excluded."
     }
   }
 }

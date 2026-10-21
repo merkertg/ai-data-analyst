@@ -4,13 +4,13 @@
 
 IndustrialFlow, a fictional distributor of industrial equipment (pumps, compressors, valves, sensors), keeps orders, customers, products, refunds and inventory in a relational database. Managers ask questions such as *"Why did revenue drop in September? Which categories and regions contributed most? Are there anomalies?"* Answering them today means a manual round of SQL, a spreadsheet and a written summary.
 
-The application answers such questions by running a short investigation: it selects data through a fixed set of analytics tools, performs exact calculations, builds charts and writes a structured report that separates facts, hypotheses and recommendations, each backed by tool results.
+The application answers such questions by running a short investigation: it selects data through a fixed set of analytics tools, obtains exact calculations and writes a structured report that separates facts, hypotheses and recommendations, with references to tool results. Charts are planned for Stage 08.
 
 The project uses fictional IndustrialFlow data generated with a fixed seed.
 
-## Current implementation: Stages 01–06
+## Current implementation: Stages 01–07
 
-The application has a runnable HTTP foundation, a PostgreSQL schema created by versioned migrations, reproducible generated data, an atomic loader and read-only cross-table quality checks. A read-only analytics CLI and reusable functions calculate exact financial metrics, comparisons and contributions. Anomaly detection adds statistical rules, stockout runs and seeded Isolation Forest candidates, with a separate offline evaluation of injected-scenario coverage. A REST API exposes the same metrics, contributions and anomaly candidates and saves report snapshots. The LLM agent follows in Stage 07.
+The application has a runnable HTTP foundation, a PostgreSQL schema created by versioned migrations, reproducible generated data, an atomic loader and read-only cross-table quality checks. A read-only analytics CLI and reusable functions calculate exact financial metrics, comparisons and contributions. Anomaly detection adds statistical rules, stockout runs and seeded Isolation Forest candidates, with a separate offline evaluation of injected-scenario coverage. A REST API exposes the same metrics, contributions and anomaly candidates and saves report snapshots. An AI analyst answers natural-language questions through nine read-only tools and returns a structured report. Its evidence references and recognised numeric literals are checked against tool results; this does not establish semantic or causal correctness.
 
 ```text
 HTTP client → Uvicorn → FastAPI
@@ -20,10 +20,15 @@ HTTP client → Uvicorn → FastAPI
                          ├─ GET /api/analytics/{categories,regions,     │ read-only snapshot
                          │                       anomalies}              │ session → services
                          ├─ POST /api/reports, GET /api/reports[/{id}]  ┘ → app.analytics
+                         ├─ POST /api/agent/runs → AgentRuntime ⇄ provider (mock | OpenAI)
+                         │     └─ ToolExecutor → 9 registered read-only tools → services
+                         │        report → evidence check → agent_runs (history)
+                         ├─ GET /api/agent/runs[/{id}] → stored investigations
                          └─ /docs, /redoc and /openapi.json → API documentation
 
 Alembic migrations → PostgreSQL 17: customers, products, orders,
-                     order_items, refunds, inventory_snapshots, reports
+                     order_items, refunds, inventory_snapshots, reports,
+                     agent_runs
 Sample CLI (python -m app.db.sample) → small dataset with known answers
 Generator (python -m app.data.generate) → CSV + manifest + evaluation ground truth
 Loader (python -m app.data.load) → one transaction, empty domain tables only
@@ -38,6 +43,7 @@ Offline evaluator (python -m app.analytics.evaluate) → report + ground truth �
 sql/*.sql → hand-written queries, executed by integration tests
 
 Settings: environment variables → .env → defaults in app/config.py
+LLM settings: the same sources → app/llm/config.py, read only when the agent runs
 ```
 
 `GET /health` reports that the process is up and answering HTTP; it never touches the database. Its return annotation, `HealthResponse`, is both the documented schema and a runtime check. `GET /ready` opens a connection, reads `alembic_version` and compares it with the latest migration shipped with the code. A missing `DATABASE_URL`, an unreachable server, an empty or outdated schema all return the same `503` without revealing the address. The application version lives in `app/__init__.py`, and a test keeps it equal to `version` in `pyproject.toml`.
@@ -52,12 +58,13 @@ Settings: environment variables → .env → defaults in app/config.py
 
 | Component | Choice | Responsibility |
 | --- | --- | --- |
-| Language | Python 3.12 | API, database and deterministic analytics; agent later |
+| Language | Python 3.12 | API, database, deterministic analytics and the agent runtime |
 | API | FastAPI | HTTP routing, validation, generated OpenAPI |
 | ASGI server | Uvicorn | Local HTTP serving |
 | Database | PostgreSQL 17 in Docker Compose | Persistent records, relational links, integrity rules |
 | Database access | SQLAlchemy 2 with psycopg 3 | Typed models, connection pool, sessions and transactions |
 | Anomaly model | scikit-learn Isolation Forest | Seeded candidates on dimensionless monthly features |
+| LLM | OpenAI Responses API via the `openai` SDK 3.24.0; deterministic mock by default | Question interpretation, tool choice, explanation; never computes numbers |
 | Schema changes | Alembic | Ordered creation, drift check and explicit rollback |
 | Configuration | pydantic-settings | Environment and `.env` loading with validation |
 | Dependency management | uv 0.12.23 | Isolated environment, locked dependencies, Python download |
@@ -65,7 +72,7 @@ Settings: environment variables → .env → defaults in app/config.py
 | Code checks | Ruff, mypy (strict, Pydantic plugin) | Lint, formatting, import order, static types |
 | CI | GitHub Actions with a PostgreSQL service | The same checks on every push to `main` and pull request |
 
-The Stage 03 generator uses only standard-library `random.Random`, `csv`, `hashlib` and exact `Decimal` arithmetic; it needs no NumPy or Faker. Stage 04 uses PostgreSQL aggregation and Python `Decimal` without new dependencies; Pandas and DuckDB are deferred until a concrete use case requires them ([ADR 0004](adr/0004-deterministic-analytics-core.md)). Stage 05 adds locked scikit-learn and its transitive dependencies, while exact monetary metrics remain SQL/Decimal. Planned additions: the OpenAI API for tool calling and structured outputs (Stage 07); Streamlit and Plotly (Stage 08); an application Docker image (Stage 10).
+The Stage 03 generator uses only standard-library `random.Random`, `csv`, `hashlib` and exact `Decimal` arithmetic; it needs no NumPy or Faker. Stage 04 uses PostgreSQL aggregation and Python `Decimal` without new dependencies; Pandas and DuckDB are deferred until a concrete use case requires them ([ADR 0004](adr/0004-deterministic-analytics-core.md)). Stage 05 adds locked scikit-learn and its transitive dependencies, while exact monetary metrics remain SQL/Decimal. Stage 07 adds the official OpenAI SDK for tool calling and structured outputs. Planned additions: Streamlit and Plotly (Stage 08); an application Docker image (Stage 10).
 
 ## Data model
 
@@ -83,6 +90,8 @@ customers 1 ──< orders 1 ──< order_items >── 1 products 1 ──< in
 | `order_items` | `order_id`, `product_id`, `quantity`, `unit_price NUMERIC(12,2)`, `discount NUMERIC(5,4)` | `quantity > 0`, `unit_price >= 0`, `0 <= discount < 1`, one line per product per order |
 | `refunds` | `order_item_id`, `amount NUMERIC(12,2)`, `processed_at` | `amount > 0` |
 | `inventory_snapshots` | `product_id`, `snapshot_date`, `quantity` | `quantity >= 0`, one snapshot per product per day |
+
+Two more tables hold results rather than business records and have no foreign keys to them: `reports` (Stage 06 snapshots) and `agent_runs` (Stage 07 investigations, with a CHECK that a completed run has a report and a failed run an error).
 
 Deleting an order cascades to its lines; every other foreign key is `RESTRICT`, so customers with orders, sold products and refunded lines cannot be deleted. Constraint and index names follow a convention (`ck_`, `fk_`, `uq_`, `ix_` + table + columns). Rules spanning several tables — refunds not exceeding the line total, refunds only for paid orders — are verified by Stage 03 read-only data quality checks. Decisions are recorded in [ADR 0002](adr/0002-postgresql-schema-and-migrations.md).
 
@@ -127,6 +136,7 @@ Architecture decisions are recorded as ADRs in [adr/](adr/):
 - [ADR 0004: Deterministic analytics core](adr/0004-deterministic-analytics-core.md) — explicit period semantics, independent SQL aggregates, exact comparisons, signed contributions and a snapshot-consistent CLI without Pandas or DuckDB.
 - [ADR 0005: Anomaly detection and offline evaluation](adr/0005-anomaly-detection-and-offline-evaluation.md) — full-month retrospective rules, seeded Isolation Forest, exact feature extraction and separate positive-scenario coverage.
 - [ADR 0006: REST API and saved reports](adr/0006-rest-api-and-saved-reports.md) — thin routers over shared services, validated query models, lazy read-only snapshot sessions, money as JSON strings, safe 503 mapping and immutable JSONB report snapshots.
+- [ADR 0007: AI agent with tool calling and verified reports](adr/0007-ai-agent-tool-calling.md) — fixed read-only tools with strict arguments, a server-owned bounded loop, a structured report whose numbers are checked against tool results, mock and OpenAI providers, stored run history.
 
 ## Architecture
 
@@ -151,7 +161,7 @@ The default bundle contains 640 customers, 64 products, 20,000 orders and daily 
 
 The five injected scenarios are valid business events, not deliberately invalid rows: reduced paid pump quantities in September (A01), 35% discounts on paid valve lines in the South in August (A02), additional refunds of 30% of rounded compressor line amounts in July (A03), zero snapshots for one pump on 10–19 September (A04), and one unusually large paid sensor line of 500 units in June (A05). A01 and A04 coexist in the dataset; this does not prove a causal stockout explanation for the sales drop.
 
-`ground_truth.json` records baseline and observed deterministic evidence for evaluation. Runtime detection and the future LLM agent never read it. Read-only data quality checks detect orders without lines, aggregate refunds above a rounded discounted line amount, refunds on unpaid orders and refunds processed before payment. A successful quality check establishes these rules only; it does not mean that sales behaviour is statistically ordinary.
+`ground_truth.json` records baseline and observed deterministic evidence for evaluation. Runtime detection and the agent do not read it. Read-only data quality checks detect orders without lines, aggregate refunds above a rounded discounted line amount, refunds on unpaid orders and refunds processed before payment. A successful quality check establishes these rules only; it does not mean that sales behaviour is statistically ordinary.
 
 Stage 05 extracts monthly category and region/category features, paid lines and stock snapshots directly from the current database. Robust statistics compare each complete calendar month with at least six other months of its series using a median and MAD. A zero-MAD fallback, an upper IQR fence for line quantities and a three-day consecutive-zero stock rule make their thresholds explicit. Isolation Forest fits and scores at least 16 usable complete-month rows using quantity and paid-sales ratios to series medians, weighted discount rate and refund/sales ratio. Its default seed is 42, with 100 trees, one worker and automatic contamination.
 
@@ -159,10 +169,35 @@ All findings are investigation candidates. The analysis is retrospective and is 
 
 ## REST API
 
-`app/api/` contains thin FastAPI routers; `app/services/` arranges results of `app/analytics` into response models, so the API, the CLIs and the future agent share one implementation. Query parameters are Pydantic models with `extra="forbid"` and validators for half-open periods, the 120-month bound, paired comparison dates and the seed range; invalid requests receive 422. Each GET runs in a `REPEATABLE READ READ ONLY` session injected with `Depends`; sessions resolve the engine lazily on the first statement, because FastAPI resolves dependencies even for invalid parameters. Responses serialise `Decimal` money as JSON strings and undefined values as `null`. A missing or unreachable database maps to one 503 text without internal details.
+`app/api/` contains thin FastAPI routers; `app/services/` arranges results of `app/analytics` into response models, so the API, the CLIs and the agent share the analytics implementation. Metric and analytics query parameters are Pydantic models with `extra="forbid"` and validators for half-open periods, the 120-month bound, paired comparison dates and the seed range; invalid requests receive 422. Each database-backed GET runs in a `REPEATABLE READ READ ONLY` session injected with `Depends`; sessions resolve the engine lazily on the first statement, because FastAPI resolves dependencies even for invalid parameters. Responses serialise `Decimal` money as JSON strings and undefined values as `null`. A missing or unreachable database maps to one 503 text without internal details.
 
 `POST /api/reports` computes a comparison or anomaly result and stores it in the `reports` table (migration `0002`): UUID id, checked `kind`, request parameters and API-shaped result as JSONB, application version and creation time. Reports are immutable snapshots without foreign keys to sales rows. There is no authentication yet; the API is intended for `127.0.0.1` until the Stage 09 security work.
 
+## AI agent
+
+### LLM models
+
+The provider is chosen by `LLM_PROVIDER`. The default `mock` provider needs no key or network: it runs a fixed four-step plan (coverage; comparison, categories, regions and refunds; anomalies and stock of the main category; report) over the real tools and marks its reports as demo mode, so the whole loop can be shown and tested offline. `openai` uses the Responses API with strict function tools, parallel tool calls and a strict JSON Schema text format; requests set `store=False` and carry the full history including any encrypted reasoning items. The application does not use a server-side conversation or `previous_response_id`; this is not a claim about all provider retention policies. There is no default model: `OPENAI_MODEL` must name a model compatible with all request options, including function calling, structured outputs and encrypted reasoning items. The base URL is fixed and retries are disabled. The adapter is tested with a fake SDK; a real OpenAI request and model quality have not been verified. Agent evaluations with known answers are planned for Stage 09.
+
+### Agent tools
+
+| Tool | Returns |
+| --- | --- |
+| `get_data_coverage` | Date ranges of sales, refunds and stock; exact category and region names |
+| `get_revenue` | Period totals and monthly buckets |
+| `compare_periods` | All metrics of two periods with exact changes |
+| `get_sales_by_category`, `get_sales_by_region` | Net revenue change split by group, signed shares |
+| `get_top_products` | Products by paid sales, optionally in one category |
+| `get_refund_statistics` | Refund count, amount and refund-to-sales rate per category |
+| `detect_anomalies` | Stage 05 candidates, rules before Isolation Forest, optional category |
+| `get_inventory_history` | Zero-stock days per product; missing snapshots are not zeros |
+
+Arguments are validated by strict Pydantic models before any SQL (unknown fields, coerced types, duplicate JSON keys, reversed or longer than 24-month periods are rejected and returned to the model as tool errors). Each call runs its own read-only `REPEATABLE READ` session; results above 16,000 characters are replaced by an error asking for a narrower request.
+
+### Runtime and verification
+
+`AgentRuntime` owns the loop: defaults are 8 model turns, 16 tool calls, 2 report corrections, a 120-second time budget and 120,000 transcript characters. The time budget is checked between operations, and model requests receive the smaller remaining timeout; an in-flight synchronous SQL/tool call is not interrupted at the deadline. The final `AnalysisReport` separates facts, hypotheses, recommendations and limitations. Each fact cites evidence (`call_id`, dotted field path, exact value). Every evidence reference must resolve to the exact scalar value from a successful tool call. Recognised numeric literals in facts and hypotheses must match their own evidence by magnitude; the summary, recommendations and limitations may use evidence from the whole report. ISO dates, calendar-context years, codes and cited names are excluded; bare four-digit amounts and numbers followed by units still require evidence. The checker does not prove metric identity, sign, date correctness or causation, and may not recognise number words or other notation. Problems are sent back as a correction. Completed runs and handled `LLMError` failures are stored in `agent_runs` with their partial trace when storage succeeds; configuration failures before the run and tool/database failures have no stored run. Runtime tools do not read the ground truth.
+
 ## Next steps
 
-Stage 07 adds the LLM agent. Its tools call the same `app/services` functions as the REST API, so every number in an answer comes from SQL and Decimal; the agent must distinguish facts from hypotheses, cite tool results and keep the evaluation ground truth outside runtime. Its final report is saved in the `reports` table.
+Stage 08 adds a Streamlit interface: a chat with the agent, Plotly charts from API data and report export. The agent report already keeps evidence separately, so each fact can be shown with the tool call it came from.

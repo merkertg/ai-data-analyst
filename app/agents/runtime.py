@@ -1,8 +1,8 @@
 """The tool-calling loop: model → validated tools → verified report.
 
-The runtime, not the model, decides how long a run may last. Every run ends
-after a fixed number of model turns, tool calls, report corrections and
-seconds, and a report is accepted only after the evidence check passes.
+The runtime enforces model-turn, tool-call and correction limits, and checks a
+deadline between operations. Synchronous SQL already in progress is not
+interrupted. A report is accepted only after the evidence check passes.
 """
 
 import json
@@ -117,7 +117,7 @@ class AgentRuntime:
             self._remaining(deadline)
             self._validate_turn(turn, seen_ids)
             # Keep every output item, including reasoning: with store=False the
-            # provider remembers nothing between requests.
+            # requests do not use a stored response as continuation state.
             history.extend(turn.output_items)
             self._check_transcript(history)
             if turn.report is not None:

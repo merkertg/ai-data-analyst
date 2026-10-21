@@ -1,15 +1,16 @@
-"""Check that a report only states numbers the tools actually returned.
+"""Check evidence pointers and recognised numeric literals in a report.
 
 Two rules, applied before a report is accepted:
 
 1. Every evidence item points at a successful tool call of this run, and the
    value at its field path equals the quoted value exactly.
-2. Every number written in a fact, hypothesis, recommendation or the summary
-   equals one of the verified evidence values (the sign may be dropped:
-   "fell by 291500.00" quotes "-291500.00"). Years, ISO dates and digits
-   inside cited names ("Demo pumps 01") are not figures.
+2. Numeric literals in facts, hypotheses, recommendations, limitations and
+   the summary match evidence values (the sign may be dropped: "fell by
+   291500.00" quotes "-291500.00"). ISO dates, years beside calendar words,
+   codes and digits inside cited names ("Demo pumps 01") are exempt.
 
-The model can still phrase things badly, but it cannot invent a figure.
+This is a limited numeric guard, not a proof of a statement's meaning or
+causality. It does not understand numbers written as words or every notation.
 """
 
 import re
@@ -21,12 +22,31 @@ from app.agents.contracts import ToolTrace
 from app.agents.schemas import AnalysisReport, Evidence
 
 _DATE = re.compile(r"\d{4}-\d{2}-\d{2}")
-# A number not glued to a letter, digit or hyphen (so "A01", "DN50" and
-# "ЦН-100" are names, not figures). Thousands may be grouped with spaces.
+# Leading letters and hyphens mark codes such as "A01", "DN50" and "ЦН-100".
+# Trailing letters do not hide amounts: "999999руб." still contains 999999.
+# Thousands may be grouped with spaces.
 _NUMBER = re.compile(
     r"(?<![\w.,\-−–])[-−–]?"
     r"(?:\d{1,3}(?:[ \u00a0\u202f]\d{3})+(?:[.,]\d+)?|\d+(?:[.,]\d+)*)"
-    r"(?!\w)"
+    r"(?!\d)"
+)
+# A four-digit token alone may be money or a count. Only neighbouring month
+# names or an explicit year word let it serve as a calendar label instead.
+_MONTH_NAME = (
+    r"(?:январ[а-яё]*|феврал[а-яё]*|март[а-яё]*|апрел[а-яё]*|ма[йяею]|"
+    r"июн[а-яё]*|июл[а-яё]*|август[а-яё]*|сентябр[а-яё]*|октябр[а-яё]*|"
+    r"ноябр[а-яё]*|декабр[а-яё]*|jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|"
+    r"apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|"
+    r"oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)"
+)
+_YEAR_WORD = r"(?:год(?:а|у|ом|е)?|г\.)"
+_CALENDAR_BEFORE = re.compile(
+    rf"(?:\b{_MONTH_NAME}\.?|\b{_YEAR_WORD}|\byear)\s+(?:of\s+)?$",
+    re.IGNORECASE,
+)
+_CALENDAR_AFTER = re.compile(
+    rf"^\s*(?:{_MONTH_NAME}\b|{_YEAR_WORD}(?=$|\W)|year\b)",
+    re.IGNORECASE,
 )
 # Ordinary, no-break and narrow no-break spaces between digit groups.
 _SPACES = str.maketrans("", "", " \u00a0\u202f")
@@ -81,14 +101,25 @@ def _candidates(token: str) -> set[Decimal]:
     return {abs(number) for item in readings if (number := _decimal(item)) is not None}
 
 
+def _calendar_year(text: str, match: re.Match[str]) -> bool:
+    """A four-digit number is a year only beside explicit calendar words."""
+    return bool(
+        re.fullmatch(r"\d{4}", match.group())
+        and (
+            _CALENDAR_BEFORE.search(text[: match.start()])
+            or _CALENDAR_AFTER.match(text[match.end() :])
+        )
+    )
+
+
 def numbers_in(text: str) -> list[str]:
-    """Numbers that need evidence: dates and 4-digit years are excluded."""
+    """Literals needing evidence, excluding ISO dates and contextual years."""
+    text = _DATE.sub(" ", text)
     found = []
-    for match in _NUMBER.finditer(_DATE.sub(" ", text)):
-        token = match.group()
-        if re.fullmatch(r"(19|20|21)\d{2}", token):
+    for match in _NUMBER.finditer(text):
+        if _calendar_year(text, match):
             continue
-        found.append(token)
+        found.append(match.group())
     return found
 
 
@@ -164,9 +195,10 @@ def check_report(report: AnalysisReport, trace: list[ToolTrace]) -> list[str]:
             problems.append(f"{owner}: number {token!r} is not in its evidence")
     for token in everything.unsupported(report.summary):
         problems.append(f"summary: number {token!r} is not in any evidence")
-    for index, text in enumerate(report.recommendations):
-        for token in everything.unsupported(text):
-            problems.append(
-                f"recommendations[{index}]: number {token!r} is not in any evidence"
-            )
+    for kind in ("recommendations", "limitations"):
+        for index, text in enumerate(getattr(report, kind)):
+            for token in everything.unsupported(text):
+                problems.append(
+                    f"{kind}[{index}]: number {token!r} is not in any evidence"
+                )
     return problems

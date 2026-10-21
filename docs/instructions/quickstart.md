@@ -2,7 +2,7 @@
 
 [← README](../../README.md) · [All documentation](../../README.md#documentation)
 
-Install uv, start PostgreSQL, apply migrations, start the API and check that it is ready. Detailed walkthroughs in Russian are in the [Stage 01](../STAGE_01.md), [Stage 02](../STAGE_02.md), [Stage 03](../STAGE_03.md), [Stage 04](../STAGE_04.md), [Stage 05](../STAGE_05.md) and [Stage 06](../STAGE_06.md) guides.
+Install uv, start PostgreSQL, apply migrations, start the API and check that it is ready. Detailed walkthroughs in Russian are in the [Stage 01](../STAGE_01.md), [Stage 02](../STAGE_02.md), [Stage 03](../STAGE_03.md), [Stage 04](../STAGE_04.md), [Stage 05](../STAGE_05.md), [Stage 06](../STAGE_06.md) and [Stage 07](../STAGE_07.md) guides.
 
 ## Requirements
 
@@ -116,7 +116,7 @@ curl http://127.0.0.1:8000/health
 curl http://127.0.0.1:8000/ready
 ```
 
-`/health` returns `{"status":"ok"}` — the process is up. `/ready` returns `{"status":"ready","revision":"0002"}` — the database is reachable and migrated; otherwise it answers `503`. Interactive documentation: <http://127.0.0.1:8000/docs>. Stop the server with `Ctrl+C`, and PostgreSQL with `docker compose stop`.
+`/health` returns `{"status":"ok"}` — the process is up. `/ready` returns `{"status":"ready","revision":"0003"}` — the database is reachable and migrated; otherwise it answers `503`. Interactive documentation: <http://127.0.0.1:8000/docs>. Stop the server with `Ctrl+C`, and PostgreSQL with `docker compose stop`.
 
 The same analytics are available over HTTP once data is loaded:
 
@@ -127,11 +127,19 @@ curl "http://127.0.0.1:8000/api/analytics/anomalies?start=2026-01-01&end=2026-10
 
 See [Using the API](usage.md) for every endpoint, parameters and saved reports. There is no authentication yet: keep the server on `127.0.0.1`.
 
+Ask the AI analyst. The default `mock` provider needs no key; see [AI analyst](agent.md) to use OpenAI:
+
+```bash
+curl -X POST http://127.0.0.1:8000/api/agent/runs \
+  -H 'Content-Type: application/json' \
+  -d '{"question": "Why did revenue fall in September?"}'
+```
+
 If port 8000 is busy, choose another one: `--port 8001`.
 
 ## Local settings
 
-Settings are read from environment variables, then from `.env`, then from defaults in `app/config.py`. Settings are read at startup, so restart the server after changing `.env`.
+Settings are read from environment variables, then from `.env`, then from defaults. Application settings live in `app/config.py`; the agent reads and caches `app/llm/config.py` settings only when a run starts. Restart the server after changing `.env` so cached settings are refreshed.
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
@@ -139,5 +147,9 @@ Settings are read from environment variables, then from `.env`, then from defaul
 | `DATABASE_URL` | not set | PostgreSQL address for the API and Alembic; must start with `postgresql+psycopg://` |
 | `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `POSTGRES_PORT` | see `.env.example` | Used by Docker Compose to create the `db` service |
 | `POSTGRES_TEST_PORT` | `5437` | Host port of the `db-test` service |
+| `LLM_PROVIDER` | `mock` | Demo planner; set `openai` for a real model |
+| `OPENAI_API_KEY`, `OPENAI_MODEL` | not set | Needed only by `openai`; choose a compatible model explicitly |
+
+Agent time, step, tool and token limits are listed in [AI analyst](agent.md). Changing the provider does not change financial calculations: tools still use SQL and `Decimal`.
 
 Without `DATABASE_URL` the API still starts: `/health` works and `/ready` answers `503`.

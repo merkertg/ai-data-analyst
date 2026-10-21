@@ -28,6 +28,7 @@ class LazySession(Session):
         """Remember whether this session must be a read-only snapshot."""
         super().__init__()
         self.read_only = read_only
+        self._resolved_engine: Engine | None = None
 
     def get_bind(
         self,
@@ -40,14 +41,18 @@ class LazySession(Session):
         **kw: Any,
     ) -> Engine | Connection:
         """Resolve the configured engine; read-only sessions get a snapshot."""
-        engine = get_engine()
-        if self.read_only:
-            # REPEATABLE READ: every query of one response sees the same data.
-            # READ ONLY: PostgreSQL itself rejects an accidental write.
-            return engine.execution_options(
-                isolation_level="REPEATABLE READ", postgresql_readonly=True
+        if self._resolved_engine is None:
+            engine = get_engine()
+            # Session caches its connection by bind identity. A new OptionEngine
+            # for each statement would open multiple connections and snapshots.
+            self._resolved_engine = (
+                engine.execution_options(
+                    isolation_level="REPEATABLE READ", postgresql_readonly=True
+                )
+                if self.read_only
+                else engine
             )
-        return engine
+        return self._resolved_engine
 
 
 def read_session() -> Generator[Session]:

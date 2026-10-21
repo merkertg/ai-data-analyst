@@ -1,0 +1,27 @@
+# ADR 0007: AI agent with tool calling and verified reports
+
+- **Status:** Accepted
+- **Date:** 2026-10-21
+
+## Context
+
+Managers ask questions such as "Why did revenue fall in September?". Answering needs several dependent steps: map the question to dates, compare periods, split the change by category and region, then look at refunds, anomaly candidates and stock. A language model can plan these steps and explain the result, but it must not be the source of any number: the project rule since Stage 01 is that SQL and Decimal compute money. The course plan names the OpenAI API with tool calling and structured outputs.
+
+## Decision
+
+- **Fixed tools, no generated SQL.** Nine read-only functions in `app/agents/tools.py` (`get_data_coverage`, `get_revenue`, `compare_periods`, `get_sales_by_category`, `get_sales_by_region`, `get_top_products`, `get_refund_statistics`, `detect_anomalies`, `get_inventory_history`). The model's tool name selects a registry entry; its JSON arguments are validated by strict Pydantic models (`extra="forbid"`, `strict=True`, duplicate keys rejected, periods of at most 24 months) before any SQL. Five tools reuse the existing analytics core and services, four use new parameterised queries in `app/analytics/details.py`. Each call runs in its own `REPEATABLE READ READ ONLY` session.
+- **Server-owned loop.** `AgentRuntime` sends the full history on every turn and limits model turns (8 by default), tool calls (16, a batch over the limit is rejected before any call runs), report corrections (2) and transcript characters (120,000). A 120-second default budget is checked between operations and passed to the model request; synchronous in-flight SQL/tool execution is not cancelled at the deadline. Tool errors are results the model can react to; a database failure stops the run.
+- **Structured report with evidence.** The final answer follows `AnalysisReport` (language, summary, facts, hypotheses, recommendations, limitations). Every fact cites evidence: a `call_id` of a successful call, a dotted field path and the exact value. `check_report` accepts the report only if each evidence value matches the tool result and recognised numeric literals match verified evidence by magnitude. Facts and hypotheses use their own evidence; the summary, recommendations and limitations use evidence from the whole report. ISO dates, calendar-context years, codes and cited names are excluded. Problems are sent back to the model as a correction message.
+- **Two providers behind one method.** `MockProvider` (default) runs a deterministic four-step plan over the real tools, needs no key or network and marks every report as demo mode. `OpenAIProvider` uses the Responses API with `strict` function tools, `parallel_tool_calls`, a strict `json_schema` text format, `store=False` with encrypted reasoning items returned in the history, a fixed base URL, no retries and no default model. SDK errors map to fixed public errors (503, 502, 504) without the SDK message.
+- **Investigation history.** Completed runs and handled `LLMError` failures are stored in `agent_runs` (migration `0003`) with the question, provider and model, report or error, the tool trace and token usage. Configuration errors before startup have no run; `ToolDataUnavailable` bypasses storage, and a storage failure cannot leave a reliable history record. The actual response model is saved on success; a failed run uses the provider's configured model. A CHECK constraint requires a report for `completed` and an error for `failed`; JSONB columns use `none_as_null=True` so a missing value is SQL `NULL`. A separate table, rather than Stage 06 `reports`, because a run has a status, an error and a chain of calls.
+- **Synchronous route.** The SDK, SQLAlchemy and psycopg are synchronous; FastAPI runs the `def` route in its thread pool, so a long model call does not block other requests. LLM settings are read inside the route (not as a dependency) so an invalid request stays a 422 even with a broken `.env`.
+
+## Consequences
+
+- Financial metrics in the API, CLI and agent tools come from the same SQL/Decimal code. The report checker rejects unsupported numeric literals that its parser recognises; this is a useful guard, not a proof that every numeric expression is grounded.
+- The check compares numeric magnitudes, including numbers followed by units and bare four-digit amounts. Its exclusions are ISO dates, calendar-context years, codes and cited names. It does not validate sign, metric identity, date correctness or causal links, and may not recognise number words or other notation, so causes are phrased as hypotheses. Agent evaluations with known answers are planned for Stage 09.
+- `store=False` and replayed history avoid application reliance on a provider-side conversation; they do not establish a blanket no-retention guarantee.
+- The OpenAI path is verified with a fake SDK only until a key is configured; the live behaviour of a real model is not yet measured.
+- Tools read separate snapshots; data changing during a run can make tools disagree. Keeping one transaction open while the model thinks was rejected.
+- Each running request occupies a worker thread while the model and tools run; the cooperative run timeout does not forcibly interrupt synchronous tools. Many concurrent runs would need a separate concurrency design.
+- There is still no authentication or rate limiting: the API stays on `127.0.0.1` until Stage 09.

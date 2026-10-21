@@ -37,9 +37,9 @@ Fixtures: `migrated_engine` builds the schema once per run with `alembic downgra
 | `tests/test_config.py` | Settings priority; `DATABASE_URL` driver and database validation; password hidden from errors and `repr` |
 | `tests/test_ready.py` | `/ready` answers `503` without a database or with an unreachable one; `/health` does not need a database |
 | `tests/test_session.py` | Lazy engine, `DatabaseNotConfigured`, disposing an unused pool |
-| `tests/test_models.py` | Six domain tables plus `reports`, `NUMERIC(12, 2)` money, delete rules, named constraints, `OrderStatus` vs `CHECK` |
+| `tests/test_models.py` | Six domain tables plus `reports` and `agent_runs`, `NUMERIC(12, 2)` money, delete rules, named constraints, `OrderStatus` vs `CHECK` |
 | `tests/test_version.py` | `app.__version__` matches `pyproject.toml` |
-| `tests/integration/test_migrations.py` | Upgrade, downgrade round trip, rollback of `0002` alone, `alembic check`, `/ready` on a real database |
+| `tests/integration/test_migrations.py` | Upgrade, downgrade round trip, rollback through `0002` and separate rollback of `0003`, `alembic check`, `/ready` on a real database |
 | `tests/integration/test_constraints.py` | 20 invalid rows rejected by the named constraint, cascade delete, exact `Decimal`, `timestamptz` |
 | `tests/integration/test_queries.py` | The four files in `sql/` return hand-computed results on the sample data |
 | `tests/test_demo_data.py`, `tests/test_data_quality.py` | Seeded generation, equal bundle bytes, money, scenarios, bundle validation and quality report behaviour |
@@ -51,6 +51,10 @@ Fixtures: `migrated_engine` builds the schema once per run with `alembic downgra
 | `tests/integration/test_anomaly_features.py` | Exact SQL features, independent refund/sales aggregates, Moscow boundaries, partial buckets, line and stock scopes and read-only behaviour |
 | `tests/test_api_validation.py` | Stage 06: invalid queries and report bodies get 422 without any SQL (a stand-in engine fails the test), non-UUID ids, 503 without `DATABASE_URL`, routes and error answers in OpenAPI |
 | `tests/integration/test_api.py` | API answers equal hand-computed sample results and the analytics core, empty periods, report round trip and snapshot behaviour, listing, 404, `READ ONLY` `REPEATABLE READ` sessions |
+| `tests/test_agent_tools.py`, `tests/test_agent_evidence.py` | Stage 07: nine tools with strict schemas, 13 rejected calls without SQL, evidence paths, exact values, numbers in report text, number formats and cited names |
+| `tests/test_agent_runtime.py`, `tests/test_agent_mock.py` | The loop with a scripted model: parallel calls, tool errors, report correction, step, tool, time and context limits; the demo planner's month, year and language |
+| `tests/test_openai_provider.py`, `tests/test_agent_api.py` | A fake OpenAI SDK: request parameters, parsing, refusals, SDK errors mapped to safe errors without the key; 422 before SQL, 503 without a key, OpenAPI |
+| `tests/integration/test_agent_tools.py`, `tests/integration/test_agent_api.py` | Detail queries vs hand-checked sample answers, tools equal the REST API, a full mock run with verified evidence, history, a stored failed run, the `agent_runs` CHECK |
 
 Useful options:
 
@@ -101,6 +105,17 @@ uv run --locked pytest tests/integration/test_api.py
 ```
 
 Unit tests replace `get_engine` with a function that fails the test, so a request rejected with 422 is proven never to reach SQL. Integration tests override the `read_session` and `write_session` dependencies with the rolled-back `_test` session and compare API answers with hand-computed sample results and the analytics core; one test opens the real read dependency and checks that PostgreSQL rejects a write. For a server smoke check, point `DATABASE_URL` at a dedicated `_test` database with the loaded bundle, apply migrations, run `uv run uvicorn app.main:app` and call the endpoints from [Using the API](usage.md).
+
+`tests/test_snapshot_session.py` uses a one-connection pool to check that `LazySession` resolves its bind only once and reuses the same connection across statements. For a PostgreSQL smoke check, read a row count inside `LazySession(read_only=True)`, commit a new row from a second connection, then repeat the count: it must stay unchanged until the reader closes. Use only the explicit `_test` database and remove the temporary row afterwards.
+
+## AI agent
+
+```bash
+uv run --locked pytest tests/test_agent_runtime.py tests/test_agent_evidence.py tests/test_openai_provider.py
+uv run --locked pytest tests/integration/test_agent_api.py
+```
+
+No test calls a real model or needs an OpenAI key: the runtime is tested with a scripted provider, the OpenAI provider with a fake SDK, and the full run with the `mock` provider over the real tools. For a server smoke check, start the API against a dedicated `_test` database with the loaded bundle and call `POST /api/agent/runs` as in [AI analyst](agent.md). A live check with OpenAI needs `LLM_PROVIDER=openai`, a key and a model in `.env`; record its result separately, it is not part of CI.
 
 ## Migrations
 

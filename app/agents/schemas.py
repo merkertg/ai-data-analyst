@@ -37,7 +37,7 @@ class Evidence(_Strict):
 
 
 class Fact(_Strict):
-    """A statement proven by tool results; its numbers come from evidence."""
+    """A statement with evidence pointers checked before runtime acceptance."""
 
     statement: str = Field(min_length=1, max_length=600)
     evidence: list[Evidence] = Field(max_length=8)

@@ -39,6 +39,10 @@ CONTENTS = [
     ("REST API и параметры", "REST API and parameters"),
     ("Сессии и ошибки", "Sessions and errors"),
     ("Сохранённые отчёты", "Saved reports"),
+    ("Инструменты агента", "Agent tools"),
+    ("Цикл tool calling", "Tool-calling loop"),
+    ("Отчёт и доказательства", "Report and evidence"),
+    ("Провайдеры и история", "Providers and history"),
     ("CI на GitHub Actions", "CI on GitHub Actions"),
     ("Шпаргалка команд", "Command cheat sheet"),
     ("Типичные ошибки", "Common errors"),
@@ -53,6 +57,7 @@ STAGE_03_SECTIONS = range(21, 24)
 STAGE_04_SECTIONS = range(24, 27)
 STAGE_05_SECTIONS = range(27, 30)
 STAGE_06_SECTIONS = range(30, 33)
+STAGE_07_SECTIONS = range(33, 37)
 
 
 def number_of(ru_title: str) -> int:

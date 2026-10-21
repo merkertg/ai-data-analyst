@@ -55,6 +55,7 @@ def report(
     summary: str = "Выручка снизилась.",
     hypotheses: list[Hypothesis] | None = None,
     recommendations: list[str] | None = None,
+    limitations: list[str] | None = None,
 ) -> AnalysisReport:
     """A report with one fact; the other parts can be overridden."""
     return AnalysisReport(
@@ -63,7 +64,7 @@ def report(
         facts=[Fact(statement=statement, evidence=items)],
         hypotheses=hypotheses or [],
         recommendations=recommendations or [],
-        limitations=[],
+        limitations=limitations or [],
     )
 
 
@@ -152,11 +153,74 @@ def test_cited_names_with_digits_are_not_figures() -> None:
     )
 
 
-def test_numbers_in_skips_dates_years_and_codes() -> None:
-    """ISO dates, years and codes such as A01 or ЦН-100 need no evidence."""
+def test_numbers_in_skips_dates_contextual_years_and_codes() -> None:
+    """ISO dates, contextual years and codes such as A01 need no evidence."""
     text = "С 2026-09-01 по сентябрь 2026: A01, ЦН-100 и DN50 дали -1 000,50 и 1,931."
 
     assert numbers_in(text) == ["-1 000,50", "1,931"]
+
+
+@pytest.mark.parametrize(
+    "statement",
+    [
+        "Чистая выручка составила 2000 рублей.",
+        "Невыполненных заказов 2026.",
+        "Выручка выросла на 999999руб.",
+        "Revenue grew by 999999RUB.",
+        "Refunds grew by 999999%.",
+    ],
+)
+def test_amounts_counts_and_adjacent_units_need_evidence(statement: str) -> None:
+    """Year-like values and units without spaces cannot hide invented figures."""
+    problems = check_report(report(statement, [NET]), TRACE)
+
+    assert len(problems) == 1
+    assert "is not in its evidence" in problems[0]
+
+
+@pytest.mark.parametrize(
+    "calendar",
+    [
+        "За сентябрь 2026 выручка упала.",
+        "В сентябре 2026 года выручка упала.",
+        "В 2026 году выручка упала.",
+        "В 2026 г. выручка упала.",
+        "Revenue fell in September 2026.",
+        "Revenue fell in Sep. 2026.",
+        "Revenue fell in the year 2026.",
+        "2026 September revenue fell.",
+    ],
+)
+def test_explicit_calendar_years_need_no_numeric_evidence(calendar: str) -> None:
+    """Calendar labels remain usable without treating any four digits as a year."""
+    assert check_report(report(calendar, [NET]), TRACE) == []
+
+
+def test_numbers_in_limitations_need_global_evidence() -> None:
+    """Limitations share the same numeric guard as summary and recommendations."""
+    checked = report(
+        "Выручка упала на 291500.00.",
+        [NET],
+        limitations=["Данных о 999999999 заказах нет."],
+    )
+
+    assert check_report(checked, TRACE) == [
+        "limitations[0]: number '999999999' is not in any evidence"
+    ]
+
+
+def test_limitations_may_reuse_verified_values_and_names() -> None:
+    """A limitation can quote supported figures and cited product names."""
+    checked = report(
+        "Товар Demo pumps 01 был без остатка 10 дн.",
+        [
+            evidence("call_2", "products.0.name", "Demo pumps 01"),
+            evidence("call_2", "products.0.zero_stock_days", "10"),
+        ],
+        limitations=["Для Demo pumps 01 подтверждены только 10 дней без остатка."],
+    )
+
+    assert check_report(checked, TRACE) == []
 
 
 @pytest.mark.parametrize(

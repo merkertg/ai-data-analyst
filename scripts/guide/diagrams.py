@@ -36,7 +36,99 @@ from guide.layout import (
 )
 
 # Сколько этапов курса уже выполнено: зелёные карточки дорожной карты.
-STAGES_DONE = 6
+STAGES_DONE = 7
+
+
+def agent_loop(c, w, h):
+    """The runtime between the model, the tools, the evidence check and history."""
+    gap, bh = 22, 44
+    bw = (w - 2 * gap) / 3
+    top, low = h - bh - 4, 16
+    xs = [index * (bw + gap) for index in range(3)]
+    node(
+        c,
+        xs[0],
+        top,
+        bw,
+        bh,
+        tr("Вопрос", "Question"),
+        "POST /api/agent/runs",
+        SLATE_L,
+        MUTED,
+    )
+    node(
+        c,
+        xs[1],
+        top,
+        bw,
+        bh,
+        "Runtime",
+        tr("шаги, вызовы, время", "steps, calls, time"),
+        BLUE_L,
+        BLUE,
+    )
+    node(
+        c,
+        xs[2],
+        top,
+        bw,
+        bh,
+        tr("Модель", "Model"),
+        tr("mock или OpenAI", "mock or OpenAI"),
+        VIOLET_L,
+        VIOLET,
+    )
+    node(
+        c,
+        xs[0],
+        low,
+        bw,
+        bh,
+        "agent_runs",
+        tr("отчёт или ошибка + след", "report or error + trace"),
+        GREEN_L,
+        GREEN,
+    )
+    node(
+        c,
+        xs[1],
+        low,
+        bw,
+        bh,
+        tr("9 инструментов", "9 tools"),
+        tr("SQL только для чтения", "read-only SQL"),
+        TEAL_L,
+        TEAL,
+    )
+    node(
+        c,
+        xs[2],
+        low,
+        bw,
+        bh,
+        tr("Проверка", "Evidence check"),
+        tr("числа = результаты", "numbers = results"),
+        AMBER_L,
+        AMBER,
+    )
+    arrow(c, xs[0] + bw + 2, top + bh / 2, xs[1] - 2, top + bh / 2)
+    # History goes to the model; calls or a report come back.
+    arrow(c, xs[1] + bw + 2, top + bh * 0.68, xs[2] - 2, top + bh * 0.68, BLUE)
+    arrow(c, xs[2] - 2, top + bh * 0.32, xs[1] + bw + 2, top + bh * 0.32, VIOLET)
+    middle = xs[1] + bw / 2
+    arrow(c, middle - 14, top - 2, middle - 14, low + bh + 2, BLUE)
+    arrow(c, middle + 14, low + bh + 2, middle + 14, top - 2, TEAL)
+    arrow(c, xs[2] + bw / 2, top - 2, xs[2] + bw / 2, low + bh + 2, VIOLET)
+    poly_arrow(
+        c,
+        [
+            (xs[2] + bw / 2, low - 2),
+            (xs[2] + bw / 2, 6),
+            (xs[0] + bw / 2, 6),
+            (xs[0] + bw / 2, low - 2),
+        ],
+        GREEN,
+    )
 
 
 def api_flow(c, w, h):

@@ -1,4 +1,4 @@
-"""Assemble the overview, Stages 01-05, CI, reference pages and results."""
+"""Assemble the overview, Stages 01–07, CI, reference pages and results."""
 
 from html import escape
 
@@ -40,6 +40,7 @@ from guide.stage03 import add_stage03
 from guide.stage04 import add_stage04
 from guide.stage05 import add_stage05
 from guide.stage06 import add_stage06
+from guide.stage07 import add_stage07
 from guide.toc import number_of, section
 
 # Плотные ячейки для таблиц итогов: страница итогов помещается целиком.
@@ -97,14 +98,16 @@ def build_story(verification, dependencies, lock_packages, facts, counts):
                 "аналитические инструменты, точно считает показатели и пишет отчёт. "
                 f"Готовы этапы 01–{STAGES_DONE:02d}: каркас API с проверками и CI, "
                 "база PostgreSQL, данные, проверки качества, точная аналитика, "
-                "поиск аномалий и REST\u00a0API с сохранёнными отчётами.",
+                "поиск аномалий, REST\u00a0API и AI-агент с инструментами, "
+                "проверкой доказательств и историей запусков.",
                 "<b>AI Data Analyst</b> is an AI analyst for <b>IndustrialFlow</b>, a "
                 "fictional company selling pumps, compressors, valves and sensors. A "
                 "manager asks in plain language; the agent calls analytics tools, "
                 "computes exact metrics and writes a report. "
                 f"Stages 01–{STAGES_DONE:02d} are done: an API foundation with checks "
                 "and CI, a PostgreSQL database, reproducible data, quality checks, "
-                "exact analytics, anomaly detection and a REST API with saved reports.",
+                "exact analytics, anomaly detection, a REST API and an AI agent "
+                "with tools, evidence checks and run history.",
             )
         ),
         Spacer(1, 10),
@@ -114,9 +117,9 @@ def build_story(verification, dependencies, lock_packages, facts, counts):
                     "API",
                     tr(
                         "FastAPI: /health и /ready; метрики, вклады групп и аномалии "
-                        "по /api/...; сохранённые отчёты. /docs строится сама.",
+                        "по /api/...; отчёты и запуски агента. /docs строится сама.",
                         "FastAPI: /health and /ready; metrics, group contributions and "
-                        "anomalies under /api/...; saved reports. /docs is generated.",
+                        "anomalies under /api/...; reports and agent runs. /docs is generated.",
                     ),
                     BLUE,
                     BLUE_L,
@@ -125,9 +128,9 @@ def build_story(verification, dependencies, lock_packages, facts, counts):
                     tr("База данных", "Database"),
                     tr(
                         "PostgreSQL 17 в Docker Compose: 6 таблиц данных, 28 правил "
-                        "целостности, NUMERIC и timestamptz; отчёты — в reports.",
+                        "целостности, NUMERIC и timestamptz; отдельно reports и agent_runs.",
                         "PostgreSQL 17 in Docker Compose: 6 data tables, 28 integrity "
-                        "rules, NUMERIC and timestamptz; reports live in reports.",
+                        "rules, NUMERIC and timestamptz; reports and agent_runs are separate.",
                     ),
                     TEAL,
                     TEAL_L,
@@ -197,10 +200,12 @@ def build_story(verification, dependencies, lock_packages, facts, counts):
         Spacer(1, 8),
         callout(
             tr(
-                "<b>Чего ещё нет:</b> LLM-агента (07), интерфейса (08) "
-                "и авторизации API (09).",
-                "<b>Not there yet:</b> the LLM agent (07), the UI (08) "
-                "and API authentication (09).",
+                "<b>Границы проверки:</b> агент проверен с mock и поддельным SDK, "
+                "живой вызов OpenAI ещё не проверен. Интерфейс Streamlit (08) "
+                "и авторизация API (09) — следующие этапы.",
+                "<b>Verification limits:</b> the agent was tested with mock and "
+                "a fake SDK; a live OpenAI call is still untested. The Streamlit UI "
+                "(08) and API authentication (09) are later stages.",
             ),
             AMBER,
             AMBER_L,
@@ -208,13 +213,13 @@ def build_story(verification, dependencies, lock_packages, facts, counts):
     ]
 
     if language() == "en":
-        # Код в репозитории прокомментирован по-русски, данные — русские названия.
+        # Source excerpts preserve the language and names used by the project.
         story += [
             Spacer(1, 8),
             p(
                 "Code excerpts are shown exactly as they are in the repository, so "
-                "their comments and docstrings are in Russian. The sample data uses "
-                "Russian company, product and category names. Detailed stage guides "
+                "comments may be in Russian or English. The small sample uses "
+                "Russian names; generated demo data uses English labels. Detailed stage guides "
                 "are in Russian (docs/STAGE_*.md); short task instructions are in "
                 "English (docs/instructions/).",
                 SMALL,
@@ -227,6 +232,7 @@ def build_story(verification, dependencies, lock_packages, facts, counts):
     add_stage04(story)
     add_stage05(story)
     add_stage06(story)
+    add_stage07(story)
 
     # CI on GitHub Actions
     remote = verification["remote_ci"]
@@ -358,6 +364,10 @@ def build_story(verification, dependencies, lock_packages, facts, counts):
         (
             tr("Сохранённые отчёты", "Saved reports"),
             "curl '127.0.0.1:8000/api/reports?limit=10'",
+        ),
+        (
+            tr("История агента", "Agent history"),
+            "curl '127.0.0.1:8000/api/agent/runs?limit=10'",
         ),
         (
             tr("Тестовая база", "Test database"),
@@ -692,10 +702,10 @@ def build_story(verification, dependencies, lock_packages, facts, counts):
         callout(
             tr(
                 "<b>Этап 02.</b> Столбец products.is_active (boolean, NOT NULL, по умолчанию "
-                "true) новой миграцией 0003 с server_default; alembic check молчит, откат "
+                "true) новой миграцией 0004 с server_default; alembic check молчит, откат "
                 "downgrade -1 работает, есть тест.",
                 "<b>Stage 02.</b> A products.is_active column (boolean, NOT NULL, default "
-                "true) via a new migration 0003 with server_default; alembic check is quiet, "
+                "true) via a new migration 0004 with server_default; alembic check is quiet, "
                 "downgrade -1 works, a test exists.",
             ),
             TEAL,
