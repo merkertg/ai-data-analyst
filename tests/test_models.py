@@ -9,8 +9,8 @@ from app.db.models import OrderStatus
 TABLES = Base.metadata.tables
 
 
-def test_six_tables_are_registered() -> None:
-    """Схема этапа 02 состоит ровно из шести таблиц предметной области."""
+def test_domain_and_report_tables_are_registered() -> None:
+    """Шесть таблиц предметной области (этап 02) и таблица отчётов (этап 06)."""
     assert set(TABLES) == {
         "customers",
         "products",
@@ -18,7 +18,13 @@ def test_six_tables_are_registered() -> None:
         "order_items",
         "refunds",
         "inventory_snapshots",
+        "reports",
     }
+
+
+def test_reports_are_not_linked_to_sales_rows() -> None:
+    """Отчёт — снимок результата: у таблицы reports нет внешних ключей."""
+    assert not TABLES["reports"].foreign_keys
 
 
 def test_money_columns_are_exact_numeric() -> None:

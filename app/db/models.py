@@ -5,9 +5,11 @@
 Денежные суммы — NUMERIC и Decimal, никогда не float.
 """
 
+import uuid
 from datetime import date, datetime
 from decimal import Decimal
 from enum import StrEnum
+from typing import Any
 
 from sqlalchemy import (
     CheckConstraint,
@@ -19,7 +21,10 @@ from sqlalchemy import (
     Numeric,
     String,
     UniqueConstraint,
+    Uuid,
+    func,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -184,3 +189,37 @@ class InventorySnapshot(Base):
     quantity: Mapped[int] = mapped_column(Integer)
 
     product: Mapped[Product] = relationship()
+
+
+class ReportKind(StrEnum):
+    """Вид сохранённого отчёта: сравнение периодов или поиск аномалий."""
+
+    COMPARISON = "comparison"
+    ANOMALIES = "anomalies"
+
+
+class Report(Base):
+    """Сохранённый аналитический отчёт: параметры запроса и точный результат.
+
+    Отчёт — снимок: результат записан один раз и потом не пересчитывается,
+    даже если данные изменятся. Поэтому вместе с ним хранятся параметры
+    и версия кода, которыми его можно воспроизвести.
+    """
+
+    __tablename__ = "reports"
+    __table_args__ = (
+        CheckConstraint("kind IN ('comparison', 'anomalies')", name="kind_allowed"),
+        # Список отчётов показывается от новых к старым.
+        Index(None, "created_at"),
+    )
+
+    # UUID, а не 1, 2, 3: номер отчёта нельзя угадать перебором.
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    kind: Mapped[str] = mapped_column(String(32))
+    # JSONB: параметры и результат хранятся как JSON; деньги в нём — строки.
+    parameters: Mapped[dict[str, Any]] = mapped_column(JSONB)
+    result: Mapped[dict[str, Any]] = mapped_column(JSONB)
+    app_version: Mapped[str] = mapped_column(String(32))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )

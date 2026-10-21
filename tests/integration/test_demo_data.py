@@ -10,7 +10,7 @@ import pytest
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.data.generate import export_dataset, generate_dataset
+from app.data.generate import FIELDS, export_dataset, generate_dataset
 from app.data.load import load_dataset
 from app.data.quality import check_quality
 from app.db.base import Base
@@ -26,10 +26,17 @@ def dataset_directory(tmp_path_factory: pytest.TempPathFactory) -> Path:
 
 
 def table_counts(session: Session) -> dict[str, int]:
-    """Count every domain table to detect partial imports as well as duplicates."""
+    """Count every domain table to detect partial imports as well as duplicates.
+
+    Only the six loaded tables: saved reports (Stage 06) are not part of a
+    data bundle.
+    """
     return {
-        name: session.scalar(select(func.count()).select_from(table)) or 0
-        for name, table in Base.metadata.tables.items()
+        name: session.scalar(
+            select(func.count()).select_from(Base.metadata.tables[name])
+        )
+        or 0
+        for name in FIELDS
     }
 
 

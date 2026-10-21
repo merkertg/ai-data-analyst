@@ -19,6 +19,8 @@ DOMAIN_TABLES = {
     "refunds",
     "inventory_snapshots",
 }
+# Миграция 0002 (этап 06) добавляет сохранённые отчёты.
+ALL_TABLES = DOMAIN_TABLES | {"reports", "alembic_version"}
 
 
 @pytest.fixture
@@ -36,8 +38,8 @@ def table_names(engine: Engine) -> set[str]:
 
 
 def test_upgrade_creates_domain_tables(migrated_engine: Engine) -> None:
-    """После upgrade head есть все шесть таблиц и служебная alembic_version."""
-    assert table_names(migrated_engine) == DOMAIN_TABLES | {"alembic_version"}
+    """После upgrade head: шесть таблиц продаж, reports и alembic_version."""
+    assert table_names(migrated_engine) == ALL_TABLES
 
 
 def test_downgrade_and_upgrade_round_trip(
@@ -50,7 +52,7 @@ def test_downgrade_and_upgrade_round_trip(
     finally:
         command.upgrade(migration_config, "head")
 
-    assert table_names(migrated_engine) == DOMAIN_TABLES | {"alembic_version"}
+    assert table_names(migrated_engine) == ALL_TABLES
 
 
 def test_models_match_migrations(
@@ -80,3 +82,16 @@ def test_ready_rejects_outdated_schema(
         command.upgrade(migration_config, "head")
 
     assert response.status_code == 503
+
+
+def test_reports_migration_rolls_back_alone(
+    migrated_engine: Engine, migration_config: Config
+) -> None:
+    """Откат 0002 удаляет только reports: таблицы продаж остаются на месте."""
+    command.downgrade(migration_config, "0001")
+    try:
+        assert table_names(migrated_engine) == DOMAIN_TABLES | {"alembic_version"}
+    finally:
+        command.upgrade(migration_config, "head")
+
+    assert table_names(migrated_engine) == ALL_TABLES

@@ -1,4 +1,4 @@
-"""Точка входа API: приложение FastAPI, проверки /health и /ready."""
+"""Точка входа API: приложение FastAPI, проверки /health и /ready, маршруты /api."""
 
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -10,12 +10,13 @@ from sqlalchemy import Engine
 from sqlalchemy.exc import SQLAlchemyError
 
 from app import __version__
+from app.api import analytics, metrics, reports
+from app.api.errors import NOT_READY, register_error_handlers
 from app.config import get_settings
 from app.db.readiness import current_revision, expected_revision
 from app.db.session import DatabaseNotConfigured, dispose_engine, get_engine
 
-# Один и тот же текст для всех причин: адрес и ошибки драйвера не раскрываем.
-NOT_READY = "Database is not ready"
+__all__ = ["NOT_READY", "app"]
 
 
 @asynccontextmanager
@@ -37,6 +38,12 @@ app = FastAPI(
     version=__version__,
     lifespan=lifespan,
 )
+# Недоступная база — 503 с одним и тем же текстом для всех маршрутов /api.
+register_error_handlers(app)
+# Этап 06: метрики, аналитика и сохранённые отчёты.
+app.include_router(metrics.router)
+app.include_router(analytics.router)
+app.include_router(reports.router)
 
 
 class HealthResponse(BaseModel):
