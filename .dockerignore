@@ -1,0 +1,40 @@
+# The environment is rebuilt inside the Linux image from uv.lock.
+.venv/
+**/__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+
+# Git history, editor settings and local secrets never enter the build.
+.git/
+.github/
+.gitignore
+.gitattributes
+.env
+.env.*
+!.env.example
+.streamlit/secrets.toml
+.DS_Store
+.idea/
+.vscode/
+*.log
+
+# Not needed at runtime: tests, documentation, scripts, generated data and
+# reports are checked in CI outside the final image.
+tests/
+docs/
+scripts/
+sql/
+data/
+reports/
+evals/results/
+compose.yaml
+Dockerfile
+build/
+dist/
+*.egg-info/

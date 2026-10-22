@@ -34,6 +34,7 @@ dev = [
     "httpx2>=2.13.1",   # HTTP-клиент, на котором работает TestClient в Starlette 1.7+.
     "mypy>=2.4.0",      # Статическая проверка типов.
     "pytest>=9.1.1",    # Находит и запускает автоматические тесты.
+    "pytest-cov>=6",
     "ruff>=0.16.10",    # Линтер и форматировщик кода.
 ]
 
@@ -84,3 +85,14 @@ ignore_missing_imports = true
 [[tool.mypy.overrides]]
 module = ["plotly.*"]
 ignore_missing_imports = true
+
+# Coverage of app/ and ui/ by lines and branches. CI runs pytest --cov and
+# fails below the threshold; it was 93% when the gate was introduced.
+[tool.coverage.run]
+source = ["app", "ui"]
+branch = true
+
+[tool.coverage.report]
+fail_under = 90
+skip_covered = true
+show_missing = true

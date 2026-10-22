@@ -430,7 +430,10 @@ def main() -> None:
     try:
         settings = UISettings()
     except ValidationError:
-        st.error("Check UI_API_URL and UI_REQUEST_TIMEOUT_SECONDS in the environment.")
+        st.error(
+            "Check UI_API_URL, UI_ALLOWED_API_HOSTS and UI_REQUEST_TIMEOUT_SECONDS "
+            "in the environment."
+        )
         st.stop()
     client = APIClient(settings)
     with st.sidebar:

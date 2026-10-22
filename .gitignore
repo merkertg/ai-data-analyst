@@ -25,3 +25,10 @@ wheels/
 
 # Rebuild the fictional CSV dataset with python -m app.data.generate.
 data/demo*/
+
+# Local reports of the dependency audit and coverage.
+reports/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/

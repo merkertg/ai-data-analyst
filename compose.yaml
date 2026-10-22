@@ -1,35 +1,138 @@
-# Локальный стенд этапа 02: PostgreSQL для разработки и отдельная тестовая БД.
-# Настройки берутся из .env (образец — .env.example).
+# The whole stand: PostgreSQL, migrations, demo bootstrap, API and interface.
+#   docker compose up --build     → http://127.0.0.1:8502 (UI), :8001 (API)
+# Values come from the environment or .env (template: .env.example); without
+# .env the local demo defaults below apply. Every port listens on 127.0.0.1 only.
 name: ai-data-analyst
 
-# Образ закреплён по digest: тег postgres:17 на Docker Hub можно перезаписать.
-# Тот же digest использует CI и первый проект.
+# The image is pinned by digest: the postgres:17 tag on Docker Hub can move.
+# CI and the first course project use the same digest.
 x-postgres-image: &postgres-image postgres:17@sha256:2d2b8998d31037bf721cfdf764d76ba74171b4fab3431b7f72c27c56ddbdf9e3
+
+# One application image for migrations, bootstrap, API and UI. The database
+# address points at the db service inside the Compose network.
+x-application: &application
+  image: ${APP_IMAGE:-ai-data-analyst:local}
+  build:
+    context: .
+  environment: &database-environment
+    DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-analyst}:${POSTGRES_PASSWORD:-local-development-only}@db:5432/${POSTGRES_DB:-industrialflow}
+    DATABASE_STATEMENT_TIMEOUT_MS: ${DATABASE_STATEMENT_TIMEOUT_MS:-15000}
 
 services:
   db:
     image: *postgres-image
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-analyst}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Скопируй .env.example в .env и укажи POSTGRES_PASSWORD}
+      # The default is for a local demo bound to 127.0.0.1; set your own in .env.
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-local-development-only}
       POSTGRES_DB: ${POSTGRES_DB:-industrialflow}
     ports:
-      # Только 127.0.0.1: база недоступна из локальной сети.
-      # 5436, а не 5432: не конфликтуем с другими PostgreSQL на этом Mac.
+      # Only 127.0.0.1: the database is not reachable from the local network.
+      # 5436, not 5432: no clash with other PostgreSQL servers on this machine.
       - "127.0.0.1:${POSTGRES_PORT:-5436}:5432"
     volumes:
-      # Обычный down не удаляет том: данные переживают пересоздание контейнера.
+      # A plain `down` keeps the volume: data survives container re-creation.
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      # TCP проверяется после инициализации, отдельно от временного init-сервера.
+      # TCP is checked after initialisation, apart from the temporary init server.
       test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
       interval: 2s
       timeout: 3s
       retries: 30
       start_period: 5s
 
-  # Одноразовая БД для интеграционных тестов: запускается только с --profile test.
-  # Имя заканчивается на _test — тесты отказываются сбрасывать другие базы.
+  # Stage 10: the schema is created by Alembic, as in development and CI.
+  migrate:
+    <<: *application
+    command: ["python", "-m", "alembic", "upgrade", "head"]
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+    healthcheck:
+      disable: true
+
+  # Loads the seed 42 demo data into an empty database and keeps a valid
+  # analyst token for the interface in a volume. Safe on every start:
+  # existing data is never changed. DEMO_DATA=false skips the dataset.
+  bootstrap:
+    <<: *application
+    command:
+      ["python", "-m", "app.bootstrap", "--token-file", "/run/ai-data-analyst/ui_token"]
+    environment:
+      <<: *database-environment
+      DEMO_DATA: ${DEMO_DATA:-true}
+    volumes:
+      - ui_token:/run/ai-data-analyst
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: "no"
+    healthcheck:
+      disable: true
+
+  api:
+    <<: *application
+    # The model key reaches only the API, never the interface or the database.
+    environment:
+      <<: *database-environment
+      LLM_PROVIDER: ${LLM_PROVIDER:-mock}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-}
+      LLM_TIMEOUT_SECONDS: ${LLM_TIMEOUT_SECONDS:-60}
+      LLM_MAX_OUTPUT_TOKENS: ${LLM_MAX_OUTPUT_TOKENS:-4000}
+      AGENT_MAX_STEPS: ${AGENT_MAX_STEPS:-8}
+      AGENT_MAX_TOOL_CALLS: ${AGENT_MAX_TOOL_CALLS:-16}
+      AGENT_MAX_CORRECTIONS: ${AGENT_MAX_CORRECTIONS:-2}
+      AGENT_TIMEOUT_SECONDS: ${AGENT_TIMEOUT_SECONDS:-120}
+      AGENT_RUNS_PER_MINUTE: ${AGENT_RUNS_PER_MINUTE:-6}
+      REPORTS_PER_MINUTE: ${REPORTS_PER_MINUTE:-30}
+    ports:
+      # 8001, not 8000: a local `uvicorn --reload` can run next to the stand.
+      - "127.0.0.1:${API_PORT:-8001}:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    # The /ready check itself is defined in the Dockerfile.
+    healthcheck:
+      interval: 3s
+      timeout: 5s
+      retries: 20
+      start_period: 5s
+
+  # The interface talks only to the API (by the service name "api") and reads
+  # the token that bootstrap wrote; it has no database address and no model key.
+  ui:
+    <<: *application
+    command:
+      ["python", "-m", "streamlit", "run", "ui/main.py",
+       "--server.address", "0.0.0.0", "--server.port", "8501"]
+    environment:
+      UI_API_URL: http://api:8000
+      UI_ALLOWED_API_HOSTS: api
+      UI_API_TOKEN_FILE: /run/ai-data-analyst/ui_token
+      UI_REQUEST_TIMEOUT_SECONDS: ${UI_REQUEST_TIMEOUT_SECONDS:-150}
+    volumes:
+      - ui_token:/run/ai-data-analyst:ro
+    ports:
+      - "127.0.0.1:${UI_PORT:-8502}:8501"
+    depends_on:
+      api:
+        condition: service_healthy
+      bootstrap:
+        condition: service_completed_successfully
+    healthcheck:
+      # /_stcore/health answers "ok" when Streamlit accepts connections.
+      test: ["CMD", "python", "-c", "import urllib.request; response = urllib.request.urlopen('http://127.0.0.1:8501/_stcore/health', timeout=3); assert response.status == 200 and response.read() == b'ok'"]
+      interval: 3s
+      timeout: 5s
+      retries: 20
+      start_period: 5s
+
+  # A one-off database for integration tests: started only with --profile test.
+  # The name ends with _test: the tests refuse to reset any other database.
   db-test:
     profiles: [test]
     image: *postgres-image
@@ -39,7 +142,7 @@ services:
       POSTGRES_DB: industrialflow_test
     ports:
       - "127.0.0.1:${POSTGRES_TEST_PORT:-5437}:5432"
-    # Данные хранятся в памяти и исчезают при остановке контейнера.
+    # Data lives in memory and disappears when the container stops.
     tmpfs:
       - /var/lib/postgresql/data
     healthcheck:
@@ -51,3 +154,5 @@ services:
 
 volumes:
   postgres_data:
+  # The interface token written by bootstrap; removed with `down --volumes`.
+  ui_token:
