@@ -43,6 +43,7 @@ from guide.stage06 import add_stage06
 from guide.stage07 import add_stage07
 from guide.stage08 import add_stage08
 from guide.stage09 import add_stage09
+from guide.stage10 import add_stage10
 from guide.toc import number_of, section
 
 # Плотные ячейки для таблиц итогов: страница итогов помещается целиком.
@@ -239,6 +240,7 @@ def build_story(verification, dependencies, lock_packages, facts, counts):
     add_stage07(story)
     add_stage08(story)
     add_stage09(story)
+    add_stage10(story)
 
     # CI on GitHub Actions
     remote = verification["remote_ci"]
@@ -246,8 +248,10 @@ def build_story(verification, dependencies, lock_packages, facts, counts):
         story,
         number_of("CI на GitHub Actions"),
         tr(
-            "Те же проверки на чистой Linux-машине с отдельной PostgreSQL.",
-            "The same checks on a clean Linux machine with its own PostgreSQL.",
+            "Задание проверок на чистой Linux-машине; аудит, Docker и GHCR — "
+            f"раздел {number_of('CI/CD и публикация')}.",
+            "The checks job on a clean Linux machine; audit, Docker and GHCR — "
+            f"section {number_of('CI/CD и публикация')}.",
         ),
         ORANGE,
     )
@@ -368,6 +372,18 @@ def build_story(verification, dependencies, lock_packages, facts, counts):
             "uv run python -m streamlit run ui/main.py --server.address 127.0.0.1",
         ),
         (
+            tr("Весь стенд в Docker", "Whole stand in Docker"),
+            "docker compose up --build --detach --wait",
+        ),
+        (
+            tr("Smoke стенда", "Stand smoke test"),
+            "SMOKE_TOKEN=… python3 scripts/smoke_stack.py",
+        ),
+        (
+            tr("Аудит зависимостей", "Dependency audit"),
+            "uv run python scripts/audit_dependencies.py",
+        ),
+        (
             tr("Выдать токен", "Issue a token"),
             "uv run python -m app.security issue --name me --role analyst",
         ),
@@ -398,18 +414,11 @@ def build_story(verification, dependencies, lock_packages, facts, counts):
             "uv run ruff check . && uv run ruff format --check .",
         ),
         (tr("Типы", "Types"), "uv run mypy app ui tests migrations"),
-        (
-            tr("Оценка сценариев", "Scenario evaluation"),
-            "uv run python -m app.analytics.evaluate --help",
-        ),
         (tr("Модели = миграции?", "Models = migrations?"), "uv run alembic check"),
         (
             tr("Откатить одну миграцию", "Roll back one migration"),
             "uv run alembic downgrade -1",
         ),
-        (tr("Версия схемы", "Schema version"), "uv run alembic current"),
-        (tr("Остановить базу", "Stop the database"), "docker compose stop"),
-        (tr("Проверить lock", "Check the lock"), "uv lock --check"),
         (
             tr("Пересобрать PDF", "Rebuild the PDF"),
             "uv run --with 'reportlab==4.4.9' python scripts/build_guide.py",
@@ -560,6 +569,19 @@ def build_story(verification, dependencies, lock_packages, facts, counts):
             mono("429 Too many requests"),
             tr("Лимит запусков агента", "Agent run limit reached"),
             tr("Подождать Retry-After", "Wait Retry-After seconds"),
+        ),
+        (
+            mono("ports are not available"),
+            tr("Порт 8001, 8502 или 5436 занят", "Port 8001, 8502 or 5436 is busy"),
+            mono("API_PORT=8011 UI_PORT=8512"),
+        ),
+        (
+            tr("Аудит: not accepted / expired", "Audit: not accepted / expired"),
+            tr(
+                "Новая уязвимость или срок исключения",
+                "New finding or exception expired",
+            ),
+            tr("Обновить пакет или исключение", "Update the package or the exception"),
         ),
         (
             tr("Evals: rows in the database", "Evals: rows in the database"),
@@ -734,6 +756,16 @@ def build_story(verification, dependencies, lock_packages, facts, counts):
             tr(
                 "Что SQL-инструменты и независимый расчёт Pandas из CSV совпали на всех вопросах; о качестве модели он ничего не говорит.",
                 "That the SQL tools and an independent Pandas calculation from CSV agree on every question; it says nothing about a model.",
+            ),
+        ),
+        (
+            tr(
+                "Почему публикуется образ из smoke-проверки, а не собранный заново?",
+                "Why is the smoke-tested image published instead of a fresh build?",
+            ),
+            tr(
+                "Новая сборка — новый, никем не проверенный образ; в GHCR должен попасть ровно тот, что прошёл smoke.",
+                "A new build is a new, unchecked image; GHCR must get exactly the one that passed the smoke test.",
             ),
         ),
     ]

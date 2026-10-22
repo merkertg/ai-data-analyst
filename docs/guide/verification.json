@@ -1,7 +1,7 @@
 {
   "checked_at": "2026-10-22",
-  "base_commit": "554d908 + worktree",
-  "stage": 9,
+  "base_commit": "728e8f4 + worktree",
+  "stage": 10,
   "environment": {
     "os": {
       "ru": "macOS, Apple Silicon",
@@ -13,13 +13,13 @@
     "postgres": "17"
   },
   "tests": {
-    "total": 578,
-    "unit": 423,
-    "integration": 155,
-    "passed": 578,
+    "total": 600,
+    "unit": 440,
+    "integration": 160,
+    "passed": 600,
     "failed": 0,
     "skipped": 0,
-    "seconds": 21.66
+    "seconds": 35.1
   },
   "checks": [
     {
@@ -27,46 +27,10 @@
         "ru": "Тесты",
         "en": "Tests"
       },
-      "command": "CI=true TEST_DATABASE_URL=... pytest",
+      "command": "CI=true pytest --cov",
       "result": {
-        "ru": "578 passed: 423 unit + 155 integration",
-        "en": "578 passed: 423 unit + 155 integration"
-      },
-      "status": "pass"
-    },
-    {
-      "name": {
-        "ru": "Безопасность",
-        "en": "Security"
-      },
-      "command": "pytest tests/security",
-      "result": {
-        "ru": "55 passed: токены, роли, лимиты, SQL, враждебная модель",
-        "en": "55 passed: tokens, roles, limits, SQL, hostile model"
-      },
-      "status": "pass"
-    },
-    {
-      "name": {
-        "ru": "Evals: эталон",
-        "en": "Evals: reference"
-      },
-      "command": "python -m app.evals --provider reference",
-      "result": {
-        "ru": "42 / 42; SQL и Pandas совпали",
-        "en": "42 / 42; SQL and Pandas agree"
-      },
-      "status": "pass"
-    },
-    {
-      "name": {
-        "ru": "Evals: mock",
-        "en": "Evals: mock"
-      },
-      "command": "python -m app.evals --provider mock",
-      "result": {
-        "ru": "17 / 42; базовая линия записана",
-        "en": "17 / 42; baseline recorded"
+        "ru": "600 passed; покрытие 93.04 % (порог 90)",
+        "en": "600 passed; coverage 93.04% (gate 90)"
       },
       "status": "pass"
     },
@@ -77,8 +41,8 @@
       },
       "command": "ruff check . && ruff format --check .",
       "result": {
-        "ru": "172 файла, включая Markdown",
-        "en": "172 files, Markdown included"
+        "ru": "184 файла, включая Markdown",
+        "en": "184 files, Markdown included"
       },
       "status": "pass"
     },
@@ -89,8 +53,8 @@
       },
       "command": "mypy app ui tests migrations",
       "result": {
-        "ru": "Нет ошибок в 122 файлах",
-        "en": "No issues in 122 files"
+        "ru": "Нет ошибок в 125 файлах",
+        "en": "No issues in 125 files"
       },
       "status": "pass"
     },
@@ -101,32 +65,68 @@
       },
       "command": "alembic upgrade / check / downgrade",
       "result": {
-        "ru": "Схема 0004; откат 0004 отдельно",
-        "en": "Schema 0004; 0004 rolls back alone"
+        "ru": "Схема 0004; расхождений нет",
+        "en": "Schema 0004; no drift"
       },
       "status": "pass"
     },
     {
       "name": {
-        "ru": "Зависимости",
-        "en": "Dependencies"
+        "ru": "Аудит",
+        "en": "Audit"
       },
-      "command": "uv lock --check --offline",
+      "command": "python scripts/audit_dependencies.py",
       "result": {
-        "ru": "79 пакетов; Pandas 3.0.6 объявлен явно",
-        "en": "79 packages; Pandas 3.0.6 declared"
+        "ru": "25 находок приняты до 6.11 с причиной",
+        "en": "25 findings accepted until 6 Nov with reasons"
       },
       "status": "pass"
     },
     {
       "name": {
-        "ru": "Токены вживую",
-        "en": "Live tokens"
+        "ru": "Образ",
+        "en": "Image"
       },
-      "command": "app.security + uvicorn + curl",
+      "command": "docker build + runtime check",
       "result": {
-        "ru": "401 без токена; viewer 200/403; 7-й запуск 429",
-        "en": "401 without a token; viewer 200/403; 7th run 429"
+        "ru": "UID 10001; нет pytest, Ruff, mypy, uv",
+        "en": "UID 10001; no pytest, Ruff, mypy, uv"
+      },
+      "status": "pass"
+    },
+    {
+      "name": {
+        "ru": "Стенд с нуля",
+        "en": "Stand from scratch"
+      },
+      "command": "docker compose up --build --wait",
+      "result": {
+        "ru": "healthy за 35 с; 20 000 заказов, токен",
+        "en": "healthy in 35 s; 20,000 orders, token"
+      },
+      "status": "pass"
+    },
+    {
+      "name": {
+        "ru": "Smoke",
+        "en": "Smoke"
+      },
+      "command": "python3 scripts/smoke_stack.py",
+      "result": {
+        "ru": "8 из 8 проверок; после down + up снова 8",
+        "en": "8 of 8 checks; again 8 after down + up"
+      },
+      "status": "pass"
+    },
+    {
+      "name": {
+        "ru": "Evals: эталон",
+        "en": "Evals: reference"
+      },
+      "command": "docker compose exec api python -m app.evals",
+      "result": {
+        "ru": "42 / 42 внутри контейнера",
+        "en": "42 / 42 inside the container"
       },
       "status": "pass"
     },
@@ -135,10 +135,10 @@
         "ru": "Чистый клон",
         "en": "Clean clone"
       },
-      "command": "git clone 554d908 + CI steps",
+      "command": "git clone 728e8f4 + CI + compose up",
       "result": {
-        "ru": "578 passed; миграции вверх, check, вниз",
-        "en": "578 passed; migrations up, check, down"
+        "ru": "600 passed; стенд за 18 с, smoke пройден",
+        "en": "600 passed; stand in 18 s, smoke passed"
       },
       "status": "pass"
     }
@@ -150,46 +150,38 @@
       "body": "{\"status\":\"ok\"}"
     },
     {
-      "request": "GET /ready",
+      "request": "GET :8001/ready",
       "status": "200 OK",
       "body": "{\"status\":\"ready\",\"revision\":\"0004\"}"
     },
     {
       "request": {
-        "ru": "GET /api/metrics/revenue без токена",
-        "en": "GET /api/metrics/revenue, no token"
+        "ru": "GET :8001/api/reports без токена",
+        "en": "GET :8001/api/reports, no token"
       },
       "status": "401 Unauthorized",
       "body": "\"A valid API token is required …\""
     },
     {
-      "request": "GET /api/metrics/revenue, viewer",
-      "status": "200 OK",
-      "body": "\"net_revenue\":\"466678757.35\""
-    },
-    {
-      "request": "POST /api/agent/runs, viewer",
-      "status": "403 Forbidden",
-      "body": "\"This action requires the analyst role.\""
-    },
-    {
       "request": {
-        "ru": "POST /api/agent/runs, analyst ×6",
-        "en": "POST /api/agent/runs, analyst ×6"
+        "ru": "GET revenue, токен из тома",
+        "en": "GET revenue, volume token"
       },
+      "status": "200 OK",
+      "body": "\"net_revenue\":\"466678757.35\", -165497371.86, -26.18"
+    },
+    {
+      "request": "POST :8001/api/agent/runs",
       "status": "201 Created",
       "body": {
-        "ru": "mock: проверенный отчёт",
-        "en": "mock: verified report"
+        "ru": "completed; 4 шага, 7 вызовов",
+        "en": "completed; 4 steps, 7 calls"
       }
     },
     {
-      "request": {
-        "ru": "POST /api/agent/runs, 7-й за минуту",
-        "en": "POST /api/agent/runs, 7th in a minute"
-      },
-      "status": "429 Too Many Requests",
-      "body": "retry-after: 59"
+      "request": "GET :8502/_stcore/health",
+      "status": "200 OK",
+      "body": "ok"
     },
     {
       "request": "POST /health",
@@ -205,22 +197,22 @@
   "remote_ci": {
     "status": "not_verified",
     "detail": {
-      "ru": "Этап 09 проверен локально: код — коммит 554d908, документация — рабочее дерево поверх него. Удалённый запуск для него не подтверждён; последний подтверждённый пользователем зелёный запуск — 63f3550 (этап 06).",
-      "en": "Stage 09 passed locally: the code is commit 554d908 and the documentation is the working tree on top of it. Its remote run is not confirmed; the last run confirmed green by the user is 63f3550 (Stage 06)."
+      "ru": "Этап 10 проверен локально: код — коммит 728e8f4, документация — рабочее дерево поверх него. Новые задания (аудит, контейнер, публикация) на GitHub ещё не запускались. Пользователь подтвердил зелёные проверки для 63f3550 и 31f31bd.",
+      "en": "Stage 10 passed locally: the code is commit 728e8f4 and the documentation is the working tree on top of it. The new jobs (audit, container, publish) have not run on GitHub yet. The user confirmed green checks for 63f3550 and 31f31bd."
     }
   },
   "remaining": [
     {
-      "ru": "Этап 10: Docker-образы, docker compose up --build, аудит зависимостей и сборка в GitHub Actions.",
-      "en": "Stage 10: Docker images, docker compose up --build, dependency audit and image builds in GitHub Actions."
+      "ru": "Измерить настоящую модель OpenAI на 42 вопросах, когда появится ключ.",
+      "en": "Measure a real OpenAI model on the 42 questions once a key is available."
     },
     {
-      "ru": "Измерить настоящую модель OpenAI тем же набором из 42 вопросов, когда появится ключ.",
-      "en": "Measure a real OpenAI model with the same 42 questions once a key is available."
+      "ru": "Обновить Pillow, Streamlit и certifi после 30 октября — 3 ноября и удалить исключения аудита.",
+      "en": "Update Pillow, Streamlit and certifi after 30 October – 3 November and remove the audit exceptions."
     },
     {
-      "ru": "Вне 127.0.0.1 нужны HTTPS и общий счётчик лимитов; аудита действий пока нет.",
-      "en": "Beyond 127.0.0.1, HTTPS and shared rate-limit storage are needed; there is no audit trail yet."
+      "ru": "Подтвердить новые задания CI и публикацию в GHCR после push; для сервера — HTTPS, подпись образа и arm64.",
+      "en": "Confirm the new CI jobs and GHCR delivery after the push; for a server — HTTPS, image signing and arm64."
     }
   ],
   "dataset": {
@@ -247,12 +239,12 @@
   },
   "pdf": {
     "pages": {
-      "ru": 51,
-      "en": 51
+      "ru": 54,
+      "en": 54
     },
     "visual_review": {
-      "ru": "Все 51 страница обеих версий просмотрены на контактных листах; обложка, разделы 40–42, шпаргалка и итоги — крупно. Исправлены короткая стрелка в схеме evals и строка шпаргалки на отдельной странице.",
-      "en": "All 51 pages in each version reviewed on contact sheets; cover, sections 40–42, cheat sheet and results inspected at full size. Fixed a short arrow in the eval diagram and a cheat-sheet row on its own page."
+      "ru": "Все 54 страницы обеих версий просмотрены на контактных листах; обложка, разделы 43–45, шпаргалка и итоги — крупно.",
+      "en": "All 54 pages in each version reviewed on contact sheets; cover, sections 43–45, cheat sheet and results inspected at full size."
     }
   },
   "analytics": {
@@ -485,5 +477,26 @@
       "evals/results/2026-10-22-reference.json",
       "evals/results/2026-10-22-mock.json"
     ]
+  },
+  "delivery": {
+    "image": "ghcr.io/merkertg/ai-data-analyst",
+    "size_bytes_arm64": 1066994448,
+    "services": [
+      "db",
+      "migrate",
+      "bootstrap",
+      "api",
+      "ui"
+    ],
+    "ports": {
+      "api": 8001,
+      "ui": 8502,
+      "db": 5436
+    },
+    "coverage_percent": 93.04,
+    "audit": {
+      "findings": 25,
+      "accepted_until": "2026-11-06"
+    }
   }
 }

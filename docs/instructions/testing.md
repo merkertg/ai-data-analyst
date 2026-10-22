@@ -2,7 +2,7 @@
 
 [← README](../../README.md) · [All documentation](../../README.md#documentation)
 
-Lint, formatting, type checks, migrations, unit and integration tests, and the lock file. The same commands run in [GitHub Actions](ci-and-delivery.md).
+Lint, formatting, type checks, migrations, unit and integration tests with coverage, the dependency audit and the Docker smoke test. The same commands run in [GitHub Actions](ci-and-delivery.md).
 
 ## Verify
 
@@ -14,6 +14,7 @@ uv run --locked mypy app ui tests migrations
 docker compose --profile test up --detach --wait db-test
 export TEST_DATABASE_URL='postgresql+psycopg://analyst:analyst_test@127.0.0.1:5437/industrialflow_test'
 uv run --locked pytest -v
+uv run --locked pytest --cov
 ```
 
 A successful run reports no Ruff or mypy issues and no failed tests. Exact test counts and actual local outcomes are recorded in [VERIFICATION.md](../VERIFICATION.md); the remote GitHub Actions result is confirmed separately. Without `TEST_DATABASE_URL`, local integration tests are skipped.
@@ -118,6 +119,32 @@ uv run --locked pytest tests/integration/test_agent_api.py
 ```
 
 No test calls a real model or needs an OpenAI key: the runtime is tested with a scripted provider, the OpenAI provider with a fake SDK, and the full run with the `mock` provider over the real tools. For a server smoke check, start the API against a dedicated `_test` database with the loaded bundle and call `POST /api/agent/runs` as in [AI analyst](agent.md). A live check with OpenAI needs `LLM_PROVIDER=openai`, a key and a model in `.env`; record its result separately, it is not part of CI.
+
+## Coverage
+
+```bash
+uv run --locked pytest --cov
+```
+
+Line and branch coverage of `app/` and `ui/` must stay at or above 90 % (`[tool.coverage.report] fail_under` in `pyproject.toml`); it was 93.04 % at Stage 10. The report lists only files that are not fully covered. CI writes `reports/coverage.xml` as an artifact.
+
+## Dependency audit
+
+```bash
+uv run python scripts/audit_dependencies.py
+```
+
+Exports the locked runtime dependencies with hashes, runs pip-audit 2.10.1 and compares the findings with `scripts/audit-exceptions.json`. Unlisted findings, expired exceptions and exceptions for fixed findings fail the audit. Needs network access to the advisory database. See [dependency updates](../DEPENDENCY_UPDATES.md).
+
+## Docker stand smoke test
+
+```bash
+docker compose up --build --detach --wait --wait-timeout 300
+SMOKE_TOKEN="$(docker compose exec -T ui cat /run/ai-data-analyst/ui_token)" python3 scripts/smoke_stack.py
+docker compose down
+```
+
+`scripts/smoke_stack.py` uses only the Python standard library and checks health, readiness at `0004`, 401 without a token, the seed 42 September numbers, a completed agent run with the expected evidence, the run in history and the Streamlit health endpoint. `tests/test_delivery.py` checks the delivery files statically (digest pins, loopback ports, `.dockerignore`, non-root user, audit exceptions, SHA-pinned actions); `tests/integration/test_bootstrap.py` checks the bootstrap step.
 
 ## Security and evals
 

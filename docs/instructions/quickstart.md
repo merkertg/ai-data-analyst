@@ -2,9 +2,41 @@
 
 [← README](../../README.md) · [All documentation](../../README.md#documentation)
 
-Install uv, start PostgreSQL, apply migrations, start the API and check that it is ready. Detailed walkthroughs in Russian are in the [Stage 01](../STAGE_01.md), [Stage 02](../STAGE_02.md), [Stage 03](../STAGE_03.md), [Stage 04](../STAGE_04.md), [Stage 05](../STAGE_05.md), [Stage 06](../STAGE_06.md) and [Stage 07](../STAGE_07.md) guides.
+The fastest path is the Docker stand: one command starts the database, migrations, demo data, the API and the interface. The rest of this page runs the parts on the host for development. Detailed walkthroughs in Russian are in the stage guides [01](../STAGE_01.md) … [10](../STAGE_10.md); the [Stage 10 guide](../STAGE_10.md) explains the stand.
 
-## Requirements
+## Docker stand in one command
+
+Needs only Docker with `docker compose` (Docker Desktop on macOS and Windows) and Git; no `.env`, uv or Python on the host.
+
+```bash
+git clone git@github.com:merkertg/ai-data-analyst.git
+cd ai-data-analyst
+docker compose up --build
+```
+
+| Service | Address or result |
+| --- | --- |
+| `ui` | Interface on <http://127.0.0.1:8502>, already signed in with an analyst token |
+| `api` | <http://127.0.0.1:8001/docs>; `/ready` answers `{"status":"ready","revision":"0004"}` |
+| `db` | PostgreSQL on `127.0.0.1:5436` (user `analyst`, database `industrialflow`) |
+| `migrate` | Applies migrations, then exits |
+| `bootstrap` | Loads the seed 42 demo data into an empty database and keeps the interface token, then exits |
+
+The first build takes a few minutes; later starts take under a minute. Repeated starts keep data and the token. `docker compose down` stops the stand, `docker compose down --volumes` deletes its data. Busy ports: `API_PORT=8011 UI_PORT=8512 POSTGRES_PORT=5446 docker compose up`. A token for curl or another client:
+
+```bash
+docker compose exec -T api python -m app.security issue --name "me" --role analyst
+```
+
+Check the whole stand (Python 3 on the host, standard library only):
+
+```bash
+SMOKE_TOKEN="$(docker compose exec -T ui cat /run/ai-data-analyst/ui_token)" python3 scripts/smoke_stack.py
+```
+
+Without `.env` the stand uses a local demo database password; set `POSTGRES_PASSWORD` in `.env` for anything beyond a local demo. To use OpenAI instead of the demo provider, set `LLM_PROVIDER=openai`, `OPENAI_API_KEY` and `OPENAI_MODEL` in `.env` and run `docker compose up --detach api`. See the [demo walkthrough](../DEMO.md) for what to show.
+
+## Requirements (host development)
 
 - [uv](https://docs.astral.sh/uv/getting-started/installation/) 0.12 or newer. The project and CI use uv 0.12.23.
 - Python 3.12. You do not need to install it yourself: uv downloads it if it is missing.
@@ -22,7 +54,7 @@ Run all commands from the project root, the directory containing `pyproject.toml
 | Verification | Local checks recorded in VERIFICATION.md | Workflow targets `ubuntu-24.04`; see VERIFICATION.md for the confirmed remote result |
 | Shell for the guides | zsh or Bash | Bash |
 
-Windows is not checked yet.
+Windows is not checked in CI; use Docker Desktop or WSL 2 ([Windows and PowerShell](windows.md)).
 
 ## Install uv
 

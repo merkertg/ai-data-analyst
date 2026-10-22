@@ -36,7 +36,128 @@ from guide.layout import (
 )
 
 # Сколько этапов курса уже выполнено: зелёные карточки дорожной карты.
-STAGES_DONE = 9
+STAGES_DONE = 10
+
+
+def compose_stack(c, w, h):
+    """docker compose up: the order of the five services and their volumes."""
+    gap, bh = 16, 44
+    bw = (w - 3 * gap) / 4
+    top, low = h - bh - 4, 18
+    xs = [index * (bw + gap) for index in range(4)]
+    node(c, xs[0], top, bw, bh, "db", "PostgreSQL 17 · :5436", TEAL_L, TEAL)
+    node(c, xs[1], top, bw, bh, "migrate", "alembic upgrade head", SLATE_L, MUTED)
+    node(
+        c,
+        xs[2],
+        top,
+        bw,
+        bh,
+        "bootstrap",
+        tr("seed 42 + токен", "seed 42 + token"),
+        AMBER_L,
+        AMBER,
+    )
+    node(c, xs[3], top, bw, bh, "ui", "Streamlit · :8502", BLUE_L, BLUE)
+    node(c, xs[2], low, bw, bh, "api", "FastAPI · :8001", VIOLET_L, VIOLET)
+    for index in range(3):
+        arrow(c, xs[index] + bw + 2, top + bh / 2, xs[index + 1] - 2, top + bh / 2)
+    poly_arrow(
+        c,
+        [
+            (xs[1] + bw / 2, top - 2),
+            (xs[1] + bw / 2, low + bh / 2),
+            (xs[2] - 2, low + bh / 2),
+        ],
+    )
+    poly_arrow(
+        c,
+        [
+            (xs[2] + bw + 2, low + bh / 2),
+            (xs[3] + bw / 2, low + bh / 2),
+            (xs[3] + bw / 2, top - 2),
+        ],
+        VIOLET,
+    )
+    c.setFillColor(MUTED)
+    draw_text(c, xs[0], low + 26, tr("тома:", "volumes:"), "PT-Bold", 8)
+    draw_text(c, xs[0], low + 13, "postgres_data → db", "Mono", 7.6)
+    draw_text(c, xs[0], low, "ui_token → bootstrap, ui (ro)", "Mono", 7.6)
+
+
+def cicd_flow(c, w, h):
+    """Four jobs: two checks in parallel, the Docker stand, then publication."""
+    gap, bh = 22, 46
+    bw = (w - 2 * gap) / 3
+    top, low = h - bh - 4, 4
+    node(
+        c,
+        0,
+        top,
+        bw,
+        bh,
+        "Lint, types and tests",
+        tr("покрытие ≥ 90 %", "coverage ≥ 90 %"),
+        BLUE_L,
+        BLUE,
+        tsize=9,
+    )
+    node(
+        c,
+        0,
+        low,
+        bw,
+        bh,
+        "Audit runtime deps",
+        tr("исключения со сроком", "dated exceptions"),
+        AMBER_L,
+        AMBER,
+        tsize=9,
+    )
+    node(
+        c,
+        bw + gap,
+        (top + low) / 2,
+        bw,
+        bh,
+        "Build and smoke test",
+        tr("compose up → smoke ×2", "compose up → smoke ×2"),
+        VIOLET_L,
+        VIOLET,
+        tsize=9,
+    )
+    node(
+        c,
+        2 * (bw + gap),
+        (top + low) / 2,
+        bw,
+        bh,
+        "Publish to GHCR",
+        tr("только push", "push only"),
+        GREEN_L,
+        GREEN,
+        tsize=9,
+    )
+    middle = (top + low) / 2 + bh / 2
+    poly_arrow(
+        c,
+        [
+            (bw + 2, top + bh / 2),
+            (bw + gap / 2, top + bh / 2),
+            (bw + gap / 2, middle + 6),
+            (bw + gap - 2, middle + 6),
+        ],
+    )
+    poly_arrow(
+        c,
+        [
+            (bw + 2, low + bh / 2),
+            (bw + gap / 2, low + bh / 2),
+            (bw + gap / 2, middle - 6),
+            (bw + gap - 2, middle - 6),
+        ],
+    )
+    arrow(c, 2 * bw + gap + 2, middle, 2 * (bw + gap) - 2, middle, GREEN)
 
 
 def auth_flow(c, w, h):
@@ -1496,7 +1617,8 @@ def ci_pipeline(c, w, h):
     for label in (
         tr("push в main", "push to main"),
         tr("pull request в main", "pull request to main"),
-        tr("вручную: workflow_dispatch", "manual: workflow_dispatch"),
+        tr("тег v*", "tag v*"),
+        tr("вручную", "manual"),
     ):
         x += chip(c, x, h - 15, label, ORANGE_L, ORANGE, "PT-Bold", 7.8, 6, 15) + 6
     panel_top = h - 26
@@ -1507,8 +1629,8 @@ def ci_pipeline(c, w, h):
         10,
         panel_top - 15,
         tr(
-            "задание checks · ubuntu-24.04 · не дольше 10 минут",
-            "job checks · ubuntu-24.04 · up to 10 minutes",
+            "задание checks · ubuntu-24.04 · не дольше 15 минут",
+            "job checks · ubuntu-24.04 · up to 15 minutes",
         ),
         "PT-Bold",
         8.4,
@@ -1529,13 +1651,13 @@ def ci_pipeline(c, w, h):
         ("uv sync --locked", "lock = pyproject", BLUE_L, BLUE),
         ("Ruff lint", "ruff check .", VIOLET_L, VIOLET),
         ("Ruff format", "format --check", VIOLET_L, VIOLET),
-        ("mypy", "app tests migrations", VIOLET_L, VIOLET),
+        ("mypy", "app ui tests migrations", VIOLET_L, VIOLET),
         ("alembic upgrade", "head", TEAL_L, TEAL),
         ("alembic check", tr("модели = миграции", "models = migrations"), TEAL_L, TEAL),
         ("downgrade base", tr("и снова upgrade", "and upgrade again"), TEAL_L, TEAL),
         (
             "pytest",
-            tr("unit + integration, CI=true", "unit + integration, CI=true"),
+            tr("покрытие ≥ 90 %, CI=true", "coverage ≥ 90 %, CI=true"),
             GREEN_L,
             GREEN,
         ),

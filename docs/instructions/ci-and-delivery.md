@@ -1,50 +1,53 @@
-# CI and delivery
+# CI and delivery to GHCR
 
 [← README](../../README.md) · [All documentation](../../README.md#documentation)
 
-What GitHub Actions runs for this repository and how to read the result. The full explanation in Russian is in the [CI/CD guide](../CI_CD.md).
+What GitHub Actions runs for this repository, how the tested image reaches the GitHub Container Registry and how to read the result. The full explanation in Russian is in the [CI/CD guide](../CI_CD.md); versions and publication are in [RELEASES.md](../RELEASES.md).
 
-The workflow `CI` in `.github/workflows/ci.yml` runs on every push to `main`, every pull request targeting `main`, and on manual dispatch. There is no delivery yet: Docker images and their publication are added in Stage 10. Today the workflow checks the code, the migrations and the tests against a real PostgreSQL.
+The workflow `CI` in `.github/workflows/ci.yml` runs on every push to `main`, every push of a `v*` tag, every pull request targeting `main` and on manual dispatch.
 
 ```text
-push to main / pull request / manual run
-                  ↓
-Lint, types and tests (ubuntu-24.04, up to 10 minutes)
-  service: PostgreSQL 17 (digest-pinned), database industrialflow_test
-  checkout → uv 0.12.23 + Python 3.12 → uv sync --locked
-  → ruff check → ruff format --check → mypy app ui tests migrations
-  → alembic upgrade head → alembic check → downgrade base + upgrade head
-  → pytest (unit + integration, security, agent evals)
+push / pull request / tag v1.2.3
+ ├─ Lint, types and tests        (PostgreSQL service, coverage ≥ 90 %)
+ ├─ Audit runtime dependencies   (pip-audit over uv.lock, dated exceptions)
+ └─► Build and smoke test Docker (needs both)
+        image build → runtime contract → docker compose up → smoke
+        → down + up → smoke again → save the tested image (push only)
+     └─► Publish tested image to GHCR (push only)
+           main → :main, :sha-<commit>; v1.2.3 → :v1.2.3, :sha-<commit>
 ```
 
-## Job and steps
+## Jobs
 
-| Step | Command | Fails when |
+| Job | Main commands | Fails when |
 | --- | --- | --- |
-| Checkout repository | `actions/checkout` | — |
-| Install uv | `astral-sh/setup-uv`, uv 0.12.23, Python 3.12 | — |
-| Install locked dependencies | `uv sync --locked` | `uv.lock` does not match `pyproject.toml` |
-| Ruff lint | `uv run --locked ruff check .` | Style, import order or common bug patterns |
-| Ruff format | `uv run --locked ruff format --check .` | A Python file or Markdown code block is not formatted |
-| Mypy | `uv run --locked mypy app ui tests migrations` | A type error in strict mode |
-| Apply migrations | `uv run --locked alembic upgrade head` | A migration fails on a fresh database |
-| Check models match migrations | `uv run --locked alembic check` | A model changed without a migration |
-| Check downgrade and upgrade | `alembic downgrade base`, then `upgrade head` | A rollback is broken |
-| Pytest | `uv run --locked pytest` | Any test fails; integration tests are not skipped because `CI=true` |
+| Lint, types and tests | `uv sync --locked`, `ruff check`, `ruff format --check`, `mypy app ui tests migrations`, `alembic upgrade/check/downgrade/upgrade`, `pytest --cov` | Style, types, a migration, any test, or line+branch coverage of `app/` and `ui/` below 90 % |
+| Audit runtime dependencies | `python scripts/audit_dependencies.py` | A known vulnerability is not in `scripts/audit-exceptions.json`, an exception expired, or an exception no longer matches a finding |
+| Build and smoke test Docker | `docker build`, runtime check, `docker compose up --no-build --wait`, `python3 scripts/smoke_stack.py`, `docker compose down`, `up` again | The image runs as root or contains pytest, Ruff, mypy or uv; a service is not healthy; a smoke check fails; data or the token did not survive re-creation |
+| Publish tested image to GHCR | `docker load`, `docker tag`, `docker push` | The tag is not `vX.Y.Z` or not on `main`; the registry rejects the push |
 
-The job-level environment sets `DATABASE_URL` and `TEST_DATABASE_URL` to the service database `industrialflow_test`. The database exists only for the duration of the run.
+The smoke check calls `/health` and `/ready` (revision `0004`), expects 401 without a token, compares the September revenue with the seed 42 values (`466678757.35`, change `-165497371.86`, `-26.18`%), asks the agent and finds the cited value in its evidence, finds the run in history and checks the Streamlit health endpoint.
 
 ## Security settings
 
-- `permissions: contents: read` — the job can only read the repository.
-- Actions are pinned by full commit SHA with the version in a comment, for example `actions/checkout@3d3c42e… # v7.0.1`. A tag can be moved to other code; a SHA cannot.
-- The PostgreSQL image is pinned by digest, the same one as in `compose.yaml`.
-- `persist-credentials: false` — the GitHub token is not left in the working directory after checkout.
-- `concurrency` cancels an outdated run when a pull request gets a new push; runs on `main` are not cancelled.
-- The database password in the workflow (`analyst_ci`) belongs to a throwaway service container and protects nothing.
+- `permissions: contents: read` for the workflow; only the publish job has `packages: write`.
+- Actions are pinned by full commit SHA with the version in a comment; a test checks that every `uses:` is pinned.
+- PostgreSQL, Python and uv images are pinned by digest.
+- `persist-credentials: false` — the GitHub token is not left in the working directory.
+- The interface token of the CI stand is masked in the log and passed through the environment.
+- The published image is the one that passed the smoke test; it is not rebuilt.
+- Passwords in the workflow (`analyst_ci`, `container_ci`) belong to throwaway containers.
+
+## Artifacts
+
+| Artifact | Contents | Kept |
+| --- | --- | --- |
+| `coverage-report` | `coverage.xml` | 7 days |
+| `dependency-audit` | Exported requirements and `pip-audit.json` | 7 days |
+| `tested-image` | The tested image as `docker save` output (push only) | 1 day |
 
 ## Where to see the result
 
-Open the repository on GitHub → **Actions** → workflow **CI** → the run for your commit. The job is called **Lint, types and tests**. A green check means every step passed. If a step is red, open it, read the log, reproduce the same command locally from [testing](testing.md), fix it and push again.
+Open the repository on GitHub → **Actions** → workflow **CI** → the run for your commit. A green run shows four jobs (three on a pull request). The published image appears under **Packages** of the repository owner; the publish job summary lists its tags and digest.
 
 Local checks do not confirm a remote run. The confirmed status of each commit is recorded in the [verification report](../VERIFICATION.md).

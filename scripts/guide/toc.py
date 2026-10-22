@@ -49,6 +49,9 @@ CONTENTS = [
     ("Доступ по токенам", "Access tokens"),
     ("Ограничения и атаки", "Limits and attacks"),
     ("Evals агента", "Agent evals"),
+    ("Docker-образ и стенд", "Docker image and stand"),
+    ("Подготовка и проверка стенда", "Bootstrap and smoke test"),
+    ("CI/CD и публикация", "CI/CD and delivery"),
     ("CI на GitHub Actions", "CI on GitHub Actions"),
     ("Шпаргалка команд", "Command cheat sheet"),
     ("Типичные ошибки", "Common errors"),
@@ -66,6 +69,7 @@ STAGE_06_SECTIONS = range(30, 33)
 STAGE_07_SECTIONS = range(33, 37)
 STAGE_08_SECTIONS = range(37, 40)
 STAGE_09_SECTIONS = range(40, 43)
+STAGE_10_SECTIONS = range(43, 46)
 
 
 def number_of(ru_title: str) -> int:

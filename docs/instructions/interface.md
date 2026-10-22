@@ -32,6 +32,8 @@ the project root on the import path for the `ui` and `app` packages.
 | --- | --- |
 | `UI_API_URL` | Backend URL; default `http://127.0.0.1:8000` |
 | `UI_REQUEST_TIMEOUT_SECONDS` | Network waiting timeout; default `150` seconds, range `1`–`600` |
+| `UI_API_TOKEN_FILE` | A file with the token; used when `UI_API_TOKEN` is empty. The Docker stand mounts the token written by `bootstrap` here |
+| `UI_ALLOWED_API_HOSTS` | Extra API hosts besides loopback, comma-separated single-label names such as the Compose service `api`; domains and IP addresses are rejected |
 | `UI_API_TOKEN` | API token sent as `Authorization: Bearer`; issue it with `python -m app.security issue` ([Access tokens](security.md)). A `viewer` token shows the dashboard, history and reports; asking the agent and saving reports need `analyst` |
 
 Environment variables override `.env`. Restart Streamlit after changes.

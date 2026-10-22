@@ -46,6 +46,7 @@ from guide.toc import (
     STAGE_07_SECTIONS,
     STAGE_08_SECTIONS,
     STAGE_09_SECTIONS,
+    STAGE_10_SECTIONS,
 )
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
@@ -92,8 +93,8 @@ def cover_page(c, doc):
         left,
         PAGE_H - 180,
         tr(
-            f"Этапы 01–{STAGES_DONE:02d} · от данных к проверенному агенту",
-            f"Stages 01–{STAGES_DONE:02d} · from data to a verified agent",
+            f"Этапы 01–{STAGES_DONE:02d} · от данных к опубликованному образу",
+            f"Stages 01–{STAGES_DONE:02d} · from data to a published image",
         ),
     )
     c.setFont("PT", 14)
@@ -103,10 +104,10 @@ def cover_page(c, doc):
         tr(
             "Наглядное руководство: окружение uv, API на FastAPI, PostgreSQL в Docker, "
             "миграции Alembic, SQL, воспроизводимые данные, аналитика, аномалии, "
-            "REST API, AI-агент с инструментами, Streamlit, графики, тесты и CI.",
+            "REST API, AI-агент, Streamlit, безопасность, evals, Docker и CI/CD.",
             "A visual guide: the uv environment, a FastAPI API, PostgreSQL in Docker, "
             "Alembic migrations, SQL, reproducible data, analytics, anomalies, "
-            "a REST API, an AI agent with tools, Streamlit, charts, tests and CI.",
+            "a REST API, an AI agent, Streamlit, security, evals, Docker and CI/CD.",
         ),
         "PT",
         14,
@@ -203,7 +204,8 @@ def cover_page(c, doc):
             f"06: {STAGE_06_SECTIONS[0]}–{STAGE_06_SECTIONS[-1]} · "
             f"07: {STAGE_07_SECTIONS[0]}–{STAGE_07_SECTIONS[-1]} · "
             f"08: {STAGE_08_SECTIONS[0]}–{STAGE_08_SECTIONS[-1]} · "
-            f"09: {STAGE_09_SECTIONS[0]}–{STAGE_09_SECTIONS[-1]}",
+            f"09: {STAGE_09_SECTIONS[0]}–{STAGE_09_SECTIONS[-1]} · "
+            f"10: {STAGE_10_SECTIONS[0]}–{STAGE_10_SECTIONS[-1]}",
             f"01: {STAGE_01_SECTIONS[0]}–{STAGE_01_SECTIONS[-1]} · "
             f"02: {STAGE_02_SECTIONS[0]}–{STAGE_02_SECTIONS[-1]} · "
             f"03: {STAGE_03_SECTIONS[0]}–{STAGE_03_SECTIONS[-1]} · "
@@ -212,7 +214,8 @@ def cover_page(c, doc):
             f"06: {STAGE_06_SECTIONS[0]}–{STAGE_06_SECTIONS[-1]} · "
             f"07: {STAGE_07_SECTIONS[0]}–{STAGE_07_SECTIONS[-1]} · "
             f"08: {STAGE_08_SECTIONS[0]}–{STAGE_08_SECTIONS[-1]} · "
-            f"09: {STAGE_09_SECTIONS[0]}–{STAGE_09_SECTIONS[-1]}",
+            f"09: {STAGE_09_SECTIONS[0]}–{STAGE_09_SECTIONS[-1]} · "
+            f"10: {STAGE_10_SECTIONS[0]}–{STAGE_10_SECTIONS[-1]}",
         ),
     )
     c.setFont("PT", 8.6)
@@ -238,11 +241,15 @@ def cover_page(c, doc):
             c.setFillColor(HEX("#F9A8D4"))
         elif number in STAGE_09_SECTIONS:
             c.setFillColor(HEX("#A5B4FC"))
+        elif number in STAGE_10_SECTIONS:
+            c.setFillColor(HEX("#FCA5A5"))
         else:
             c.setFillColor(HEX("#94A3B8"))
         # The row step shrinks as sections are added, so the last row always
         # stays above the footer line at y=82.
         step = min(9.7, (300 - 90) / max(rows - 1, 1))
+        # A tighter step needs a smaller font so neighbouring rows do not touch.
+        c.setFont("PT", 8.6 if step >= 9.2 else 8.0)
         c.drawString(MARGIN + column * 250, 300 - row * step, f"{number}  {tr(ru, en)}")
     c.setStrokeColor(HEX("#334155"))
     c.line(MARGIN, 82, PAGE_W - MARGIN, 82)

@@ -6,10 +6,11 @@ Where each part of the application, tests, and documentation lives.
 
 ```text
 .github/workflows/
-  ci.yml                 # Ruff, mypy, migrations and pytest with a PostgreSQL service
+  ci.yml                 # Checks with coverage, dependency audit, Docker smoke test, GHCR delivery
 app/
   __init__.py            # Package marker and the code version (__version__)
   config.py              # Settings from environment variables and .env; get_settings()
+  bootstrap.py           # Stand preparation: schema check, demo data into an empty DB, UI token
   security/
     tokens.py            # Token format, SHA-256, roles and the Principal type
     service.py           # Issue, list, revoke and authenticate tokens in PostgreSQL
@@ -87,6 +88,7 @@ sql/
   01_paid_order_totals.sql ... 04_double_counting.sql   # Hand-written queries, verified by tests
 tests/
   conftest.py            # Shared *_test database fixtures, integration marking, test analyst
+  test_delivery.py       # Stage 10: digest pins, loopback ports, .dockerignore, non-root image, audit exceptions
   test_health.py, test_config.py, test_version.py      # Stage 01 unit tests
   test_ready.py, test_session.py, test_models.py       # Stage 02 unit tests, no database
   test_demo_data.py, test_data_quality.py              # Stage 03 generation, bundle and quality unit tests
@@ -113,12 +115,19 @@ tests/
     test_api.py          # API answers vs manual results and the core, report snapshots, READ ONLY sessions
     test_agent_tools.py  # Detail queries vs hand-checked answers; tools equal the REST API
     test_agent_api.py    # Full mock run, history, stored failed run, CHECK on agent_runs
+    test_bootstrap.py    # Demo data once, interface token issued, kept and replaced
 scripts/
   build_guide.py         # Builds the PDF guide in Russian and English (ReportLab, not a project dependency)
+  smoke_stack.py         # End-to-end check of a running Docker stand (standard library only)
+  audit_dependencies.py  # pip-audit of uv.lock against dated exceptions
+  audit-exceptions.json  # Temporarily accepted vulnerabilities: reason and expiry
   guide/                 # Guide modules: language pairs, layout, diagrams, project data, section texts
 docs/
   instructions/          # Short task-oriented instructions (English)
-  STAGE_01.md ... STAGE_09.md   # Detailed stage guides (Russian)
+  STAGE_01.md ... STAGE_10.md   # Detailed stage guides (Russian)
+  DEMO.md, RELEASES.md          # Demonstration plan; image versions and GHCR publication
+  DEPENDENCY_UPDATES.md         # Dependency policy, audit and update procedure
+  PROJECT_STATUS_2026-10-22.md  # What is confirmed at the end of the course
   SECURITY.md, EVALUATION.md    # Threat model and controls; eval method and results
   CI_CD.md               # CI/CD guide (Russian)
   APPROACH.md            # Problem, solution, data model and architecture
@@ -127,7 +136,9 @@ docs/
   VERIFICATION.md        # Recorded verification results and limits
   guide/                 # PDF guides (RU, EN), their verified data and rebuild instructions
 alembic.ini              # Alembic settings; no database address inside
-compose.yaml             # PostgreSQL 17: db (development) and db-test (profile test)
+Dockerfile               # Two-stage image: locked runtime dependencies, non-root UID 10001
+.dockerignore            # Keeps .env, Git data, tests, data and reports out of the build
+compose.yaml             # db, migrate, bootstrap, api, ui; db-test with --profile test
 .env.example             # Template for local settings; .env itself is not in Git
 .gitignore               # .venv, tool caches, .env
 .python-version          # Python version uv selects: 3.12
@@ -136,7 +147,7 @@ pyproject.toml           # Project metadata, dependencies, pytest/Ruff/mypy/uv s
 uv.lock                  # Exact versions and hashes of all resolved packages
 ```
 
-The REST API (Stage 06) lives in `app/api/`, the AI analyst (Stage 07) in `app/agents/` and `app/llm/`. The Streamlit interface (Stage 08) lives in `ui/`; it calls the API over HTTP. Access control and agent evals (Stage 09) live in `app/security/`, `app/evals/`, `evals/`, `tests/security/` and `tests/evals/`. Docker and publication follow in Stage 10.
+The REST API (Stage 06) lives in `app/api/`, the AI analyst (Stage 07) in `app/agents/` and `app/llm/`. The Streamlit interface (Stage 08) lives in `ui/`; it calls the API over HTTP. Access control and agent evals (Stage 09) live in `app/security/`, `app/evals/`, `evals/`, `tests/security/` and `tests/evals/`. Docker packaging and delivery (Stage 10) are `Dockerfile`, `compose.yaml`, `app/bootstrap.py` and `scripts/`.
 
 ## Configuration in pyproject.toml
 
@@ -149,7 +160,7 @@ The REST API (Stage 06) lives in `app/api/`, the AI analyst (Stage 07) in `app/a
 | `[tool.ruff]`, `[tool.ruff.lint]` | Python 3.12 target, line length 88, rules `E F I UP B` |
 | `[tool.mypy]` | Strict mode with the Pydantic plugin |
 
-The project is an application, not a package: it was created with `uv init --app --no-package`, has no `[build-system]`, and is not installed into `.venv`. The reasons are recorded in [ADR 0001](../adr/0001-application-layout-and-tooling.md); the database decisions are in [ADR 0002](../adr/0002-postgresql-schema-and-migrations.md); generation and safe loading are in [ADR 0003](../adr/0003-reproducible-demo-data-and-safe-loading.md); the deterministic analytics contract is in [ADR 0004](../adr/0004-deterministic-analytics-core.md); anomaly detection and offline coverage limits are in [ADR 0005](../adr/0005-anomaly-detection-and-offline-evaluation.md); the REST API and saved reports are in [ADR 0006](../adr/0006-rest-api-and-saved-reports.md); the AI agent is in [ADR 0007](../adr/0007-ai-agent-tool-calling.md); the Streamlit interface is in [ADR 0008](../adr/0008-streamlit-interface.md); access control and agent evals are in [ADR 0009](../adr/0009-access-control-and-agent-evals.md).
+The project is an application, not a package: it was created with `uv init --app --no-package`, has no `[build-system]`, and is not installed into `.venv`. The reasons are recorded in [ADR 0001](../adr/0001-application-layout-and-tooling.md); the database decisions are in [ADR 0002](../adr/0002-postgresql-schema-and-migrations.md); generation and safe loading are in [ADR 0003](../adr/0003-reproducible-demo-data-and-safe-loading.md); the deterministic analytics contract is in [ADR 0004](../adr/0004-deterministic-analytics-core.md); anomaly detection and offline coverage limits are in [ADR 0005](../adr/0005-anomaly-detection-and-offline-evaluation.md); the REST API and saved reports are in [ADR 0006](../adr/0006-rest-api-and-saved-reports.md); the AI agent is in [ADR 0007](../adr/0007-ai-agent-tool-calling.md); the Streamlit interface is in [ADR 0008](../adr/0008-streamlit-interface.md); access control and agent evals are in [ADR 0009](../adr/0009-access-control-and-agent-evals.md); Docker packaging and delivery are in [ADR 0010](../adr/0010-docker-packaging-and-delivery.md).
 
 ## Streamlit interface (Stage 08)
 

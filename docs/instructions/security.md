@@ -4,6 +4,15 @@
 
 Every `/api` route needs `Authorization: Bearer <token>`. `/health`, `/ready` and the documentation pages stay open. The threat model is in [Security](../SECURITY.md); the Russian walkthrough is in the [Stage 09 guide](../STAGE_09.md).
 
+## In the Docker stand
+
+`docker compose up` issues an analyst token for the interface automatically and keeps it in the `ui_token` volume. Other tokens are issued inside the API container:
+
+```bash
+docker compose exec -T api python -m app.security issue --name "me" --role viewer --days 7
+docker compose exec -T api python -m app.security list
+```
+
 ## Issue a token
 
 Apply migrations first (head is `0004`). Token management talks to the database from `DATABASE_URL` directly; there is no HTTP endpoint for it.

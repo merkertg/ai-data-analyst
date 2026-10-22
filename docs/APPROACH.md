@@ -8,9 +8,9 @@ The application answers such questions by running a short investigation: it sele
 
 The project uses fictional IndustrialFlow data generated with a fixed seed.
 
-## Current implementation: Stages 01–09
+## Current implementation: Stages 01–10
 
-The application has a runnable HTTP foundation, a PostgreSQL schema created by versioned migrations, reproducible generated data, an atomic loader and read-only cross-table quality checks. A read-only analytics CLI and reusable functions calculate exact financial metrics, comparisons and contributions. Anomaly detection adds statistical rules, stockout runs and seeded Isolation Forest candidates, with a separate offline evaluation of injected-scenario coverage. A REST API exposes the same metrics, contributions and anomaly candidates and saves report snapshots. An AI analyst answers natural-language questions through nine read-only tools and returns a structured report. Its evidence references and recognised numeric literals are checked against tool results; this does not establish semantic or causal correctness. A Streamlit interface uses the API over HTTP. Every `/api` route requires a bearer token with a role, costly routes are rate limited, and 42 eval questions with independently computed answers measure the agent.
+The application has a runnable HTTP foundation, a PostgreSQL schema created by versioned migrations, reproducible generated data, an atomic loader and read-only cross-table quality checks. A read-only analytics CLI and reusable functions calculate exact financial metrics, comparisons and contributions. Anomaly detection adds statistical rules, stockout runs and seeded Isolation Forest candidates, with a separate offline evaluation of injected-scenario coverage. A REST API exposes the same metrics, contributions and anomaly candidates and saves report snapshots. An AI analyst answers natural-language questions through nine read-only tools and returns a structured report. Its evidence references and recognised numeric literals are checked against tool results; this does not establish semantic or causal correctness. A Streamlit interface uses the API over HTTP. Every `/api` route requires a bearer token with a role, costly routes are rate limited, and 42 eval questions with independently computed answers measure the agent. The whole stand starts with one Docker Compose command, and CI publishes the image that passed its smoke test.
 
 ```text
 HTTP client → Uvicorn → FastAPI
@@ -70,9 +70,10 @@ LLM settings: the same sources → app/llm/config.py, read only when the agent r
 | Dependency management | uv 0.12.23 | Isolated environment, locked dependencies, Python download |
 | Testing | pytest, FastAPI TestClient on httpx2, real PostgreSQL | HTTP behaviour, settings, constraints, migrations, SQL results |
 | Code checks | Ruff, mypy (strict, Pydantic plugin) | Lint, formatting, import order, static types |
-| CI | GitHub Actions with a PostgreSQL service | The same checks on every push to `main` and pull request |
+| CI/CD | GitHub Actions with a PostgreSQL service | Checks with a 90 % coverage gate, dependency audit, Docker smoke test and GHCR delivery |
+| Packaging | Docker (two-stage image, non-root) and Docker Compose | The whole stand from one command: database, migrations, demo bootstrap, API and interface |
 
-The Stage 03 generator uses only standard-library `random.Random`, `csv`, `hashlib` and exact `Decimal` arithmetic; it needs no NumPy or Faker. Stage 04 uses PostgreSQL aggregation and Python `Decimal` without new dependencies; Pandas and DuckDB are deferred until a concrete use case requires them ([ADR 0004](adr/0004-deterministic-analytics-core.md)). Stage 05 adds locked scikit-learn and its transitive dependencies, while exact monetary metrics remain SQL/Decimal. Stage 07 adds the official OpenAI SDK for tool calling and structured outputs. Stage 08 adds Streamlit 1.65.0 and Plotly 7.1.0. Pandas is now a transitive UI dependency, not a replacement for deterministic SQL/Decimal analytics. An application Docker image remains planned for Stage 10.
+The Stage 03 generator uses only standard-library `random.Random`, `csv`, `hashlib` and exact `Decimal` arithmetic; it needs no NumPy or Faker. Stage 04 uses PostgreSQL aggregation and Python `Decimal` without new dependencies; Pandas and DuckDB are deferred until a concrete use case requires them ([ADR 0004](adr/0004-deterministic-analytics-core.md)). Stage 05 adds locked scikit-learn and its transitive dependencies, while exact monetary metrics remain SQL/Decimal. Stage 07 adds the official OpenAI SDK for tool calling and structured outputs. Stage 08 adds Streamlit 1.65.0 and Plotly 7.1.0. Pandas arrived with Streamlit and is declared directly since Stage 09 for the independent eval oracle; it never replaces deterministic SQL/Decimal analytics. Stage 10 adds pytest-cov for the coverage gate and the Docker image; no new runtime dependency.
 
 ## Data model
 
@@ -138,6 +139,7 @@ Architecture decisions are recorded as ADRs in [adr/](adr/):
 - [ADR 0006: REST API and saved reports](adr/0006-rest-api-and-saved-reports.md) — thin routers over shared services, validated query models, lazy read-only snapshot sessions, money as JSON strings, safe 503 mapping and immutable JSONB report snapshots.
 - [ADR 0007: AI agent with tool calling and verified reports](adr/0007-ai-agent-tool-calling.md) — fixed read-only tools with strict arguments, a server-owned bounded loop, a structured report whose numbers are checked against tool results, mock and OpenAI providers, stored run history.
 - [ADR 0008: Streamlit interface](adr/0008-streamlit-interface.md) — an HTTP-only local client with exact labels, explicit saves and downloads.
+- [ADR 0010: Docker packaging, demo bootstrap and image delivery](adr/0010-docker-packaging-and-delivery.md) — one non-root image for every service, an idempotent bootstrap with demo data and an interface token, a blocking dependency audit with dated exceptions, a Docker smoke test and publication of the tested image to GHCR.
 - [ADR 0009: Access control, SQL limits and agent evaluations](adr/0009-access-control-and-agent-evals.md) — hashed bearer tokens with viewer and analyst roles, per-token rate limits, a statement timeout, and 42 eval questions scored against an independent Pandas oracle.
 
 ## Architecture
@@ -208,9 +210,17 @@ Every `/api` route requires `Authorization: Bearer <token>`. Tokens are `ida_` p
 
 [evals/cases.json](../evals/cases.json) holds 42 questions in Russian and English: metrics, comparisons, contributions, refunds, products, stock, missing data, refusals and a prompt injection. A Pandas oracle computes the expected values from the CSV bundle in integer kopecks, independently of PostgreSQL and the analytics core. Cases run through the production runtime and evidence check and are scored on completion, language, tool choice, cited values, refusals and planted numbers. On the seed 42 dataset the reference provider passes 42 of 42 (SQL tools and the oracle agree on every value), the demo provider 17 of 42; a real model has not been measured. Method and results are in [EVALUATION.md](EVALUATION.md).
 
-## Next steps
+## Delivery
 
-Stage 10 packages the application: Docker images for the API and the interface, `docker compose up --build`, dependency auditing, a container smoke test and image builds in GitHub Actions. Exposure beyond localhost needs HTTPS and shared rate-limit storage.
+`docker compose up --build` builds one two-stage image (locked runtime dependencies, no uv or development tools, UID 10001) and starts `db`, `migrate`, `bootstrap`, `api` and `ui`, all bound to `127.0.0.1`. The bootstrap step requires the latest migration, loads the seed 42 bundle only into an empty database and keeps one valid analyst token for the interface in a `0600` file on its own volume. The interface reaches the API by the service name `api`, which it accepts only from an explicit allow-list of single-label names, and has no database address or model key. CI gates coverage at 90 %, audits the locked runtime dependencies with explained exceptions that expire within 30 days, smoke-tests the stand before and after re-creation and publishes the tested image to GHCR (`:main`, `:sha-…`, `:vX.Y.Z`). Details: [STAGE_10.md](STAGE_10.md), [RELEASES.md](RELEASES.md), [DEPENDENCY_UPDATES.md](DEPENDENCY_UPDATES.md).
+
+## Future work
+
+- Measure a real OpenAI model on the 42 eval questions and record the model name, date and results.
+- Update Pillow, Streamlit and certifi once their fixes pass the 14-day age policy and remove the audit exceptions.
+- Sign images and attach SBOMs; build and publish arm64 in CI.
+- HTTPS and shared rate-limit storage before any deployment beyond localhost; an audit trail of who saved reports and asked questions.
+- Automated dependency-update pull requests, as in the first course project.
 
 ## Streamlit interface
 
