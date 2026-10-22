@@ -2,8 +2,9 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query
 
+from app.api.auth import AUTH_RESPONSES, get_principal
 from app.api.dependencies import ReadSession
 from app.api.errors import DATABASE_RESPONSES
 from app.schemas.analytics import (
@@ -14,7 +15,13 @@ from app.schemas.analytics import (
 )
 from app.services import analytics
 
-router = APIRouter(prefix="/api/analytics", tags=["analytics"])
+# Stage 09: every route needs a valid API token (any role reads).
+router = APIRouter(
+    prefix="/api/analytics",
+    tags=["analytics"],
+    dependencies=[Depends(get_principal)],
+    responses=AUTH_RESPONSES,
+)
 
 
 @router.get("/categories", responses=DATABASE_RESPONSES)

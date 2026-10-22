@@ -21,9 +21,12 @@ _MONTHS_RU = [
     "январ", "феврал", "март", "апрел", r"ма[йяе]", "июн",
     "июл", "август", "сентябр", "октябр", "ноябр", "декабр",
 ]  # fmt: skip
+# English names and usual abbreviations, matched as whole words only: a prefix
+# match once read the "dec" of "decline" as December (found by Stage 09 evals).
 _MONTHS_EN = [
-    "jan", "feb", "mar", "apr", "may", "jun",
-    "jul", "aug", "sep", "oct", "nov", "dec",
+    "january|jan", "february|feb", "march|mar", "april|apr", "May",
+    "june|jun", "july|jul", "august|aug", "september|sept|sep",
+    "october|oct", "november|nov", "december|dec",
 ]  # fmt: skip
 _NAMES = {
     "ru": [
@@ -49,8 +52,10 @@ def _month_in(question: str) -> int | None:
     for index, stem in enumerate(_MONTHS_RU):
         if match := re.search(rf"\b{stem}", text):
             positions.append((match.start(), index + 1))
-    for index, stem in enumerate(_MONTHS_EN):
-        if match := re.search(rf"\b{stem}[a-z]*\b", text):
+    for index, names in enumerate(_MONTHS_EN):
+        # "May" is also a verb, so only the capitalised month name counts.
+        source = question if names == "May" else text
+        if match := re.search(rf"\b(?:{names})\.?(?![a-z])", source):
             positions.append((match.start(), index + 1))
     return min(positions)[1] if positions else None
 

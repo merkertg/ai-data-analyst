@@ -19,8 +19,9 @@ DOMAIN_TABLES = {
     "refunds",
     "inventory_snapshots",
 }
-# Миграция 0002 (этап 06) добавляет сохранённые отчёты, 0003 (этап 07) — запуски агента.
-ALL_TABLES = DOMAIN_TABLES | {"reports", "agent_runs", "alembic_version"}
+# Миграции 0002 (этап 06) — сохранённые отчёты, 0003 (этап 07) — запуски
+# агента, 0004 (этап 09) — API-токены.
+ALL_TABLES = DOMAIN_TABLES | {"reports", "agent_runs", "api_tokens", "alembic_version"}
 
 
 @pytest.fixture
@@ -100,10 +101,23 @@ def test_reports_migration_rolls_back_alone(
 def test_agent_runs_migration_rolls_back_alone(
     migrated_engine: Engine, migration_config: Config
 ) -> None:
-    """Откат 0003 удаляет только agent_runs: отчёты этапа 06 остаются."""
+    """Откат до 0002 удаляет agent_runs и api_tokens: отчёты этапа 06 остаются."""
     command.downgrade(migration_config, "0002")
     try:
-        assert table_names(migrated_engine) == ALL_TABLES - {"agent_runs"}
+        assert table_names(migrated_engine) == ALL_TABLES - {"agent_runs", "api_tokens"}
+    finally:
+        command.upgrade(migration_config, "head")
+
+    assert table_names(migrated_engine) == ALL_TABLES
+
+
+def test_api_tokens_migration_rolls_back_alone(
+    migrated_engine: Engine, migration_config: Config
+) -> None:
+    """Откат 0004 удаляет только api_tokens: история агента остаётся."""
+    command.downgrade(migration_config, "0003")
+    try:
+        assert table_names(migrated_engine) == ALL_TABLES - {"api_tokens"}
     finally:
         command.upgrade(migration_config, "head")
 

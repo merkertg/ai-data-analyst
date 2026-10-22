@@ -10,6 +10,12 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Query, Response
 from app.agents.contracts import AgentProvider
 from app.agents.provider import get_agent_provider
 from app.agents.tools import SessionFactory, ToolExecutor
+from app.api.auth import (
+    AUTH_RESPONSES,
+    WRITE_RESPONSES,
+    get_principal,
+    limit_agent_runs,
+)
 from app.api.dependencies import LazySession, ReadSession, WriteSession
 from app.api.errors import DATABASE_RESPONSES
 from app.llm.config import LLMSettings, get_llm_settings
@@ -22,7 +28,13 @@ from app.schemas.agents import (
 )
 from app.services import agents
 
-router = APIRouter(prefix="/api/agent", tags=["agent"])
+# Stage 09: every route needs a valid API token (any role reads).
+router = APIRouter(
+    prefix="/api/agent",
+    tags=["agent"],
+    dependencies=[Depends(get_principal)],
+    responses=AUTH_RESPONSES,
+)
 
 ProviderFactory = Callable[[LLMSettings], AgentProvider]
 
@@ -53,7 +65,13 @@ def get_tool_sessions() -> SessionFactory:
     return partial(LazySession, read_only=True)
 
 
-@router.post("/runs", status_code=201, responses=RUN_RESPONSES)
+@router.post(
+    "/runs",
+    status_code=201,
+    responses={**RUN_RESPONSES, **WRITE_RESPONSES},
+    # A run may call a paid model: analysts only, rate limited per token.
+    dependencies=[Depends(limit_agent_runs)],
+)
 def create_run(
     request: Annotated[AgentQuestion, Body()],
     session: WriteSession,

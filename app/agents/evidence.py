@@ -202,3 +202,11 @@ def check_report(report: AnalysisReport, trace: list[ToolTrace]) -> list[str]:
                     f"{kind}[{index}]: number {token!r} is not in any evidence"
                 )
     return problems
+
+
+def written_numbers(text: str) -> set[Decimal]:
+    """Absolute values of the numeric literals in a text (used by evals)."""
+    found: set[Decimal] = set()
+    for token in numbers_in(text):
+        found |= _candidates(token)
+    return found

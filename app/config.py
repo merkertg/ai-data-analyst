@@ -36,6 +36,13 @@ class Settings(BaseSettings):
     # а /ready сообщает, что приложение ещё не готово. repr=False не даёт
     # паролю попасть в print(settings) и в журналы.
     database_url: str | None = Field(default=None, repr=False)
+    # Этап 09: любой SQL-запрос приложения дольше этого времени PostgreSQL
+    # прерывает сама — тяжёлый запрос не займёт базу надолго.
+    database_statement_timeout_ms: int = Field(default=15_000, ge=100, le=600_000)
+    # Лимиты частоты на один токен: запуск агента и сохранение отчёта
+    # стоят дороже чтения (модель, детектор аномалий).
+    agent_runs_per_minute: int = Field(default=6, ge=1, le=600)
+    reports_per_minute: int = Field(default=30, ge=1, le=600)
 
     @field_validator("database_url")
     @classmethod

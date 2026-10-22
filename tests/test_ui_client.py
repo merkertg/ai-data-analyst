@@ -520,3 +520,52 @@ def test_anomaly_parameters_retain_the_seed(
     parsed = urlsplit(transport.calls[0][0].full_url)
     assert parsed.path == "/api/analytics/anomalies"
     assert parse_qs(parsed.query)["seed"] == ["17"]
+
+
+def test_api_token_is_sent_only_as_a_bearer_header(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Stage 09: the configured token authorises every API request."""
+    token = "ida_" + "x" * 43
+    client = APIClient(UISettings(_env_file=None, api_token=token))
+    transport = MemoryTransport({"status": "ready", "revision": "0004"})
+    monkeypatch.setattr(client._opener, "open", transport.open)
+
+    client.ready()
+
+    request, _ = transport.calls[0]
+    assert request.get_header("Authorization") == f"Bearer {token}"
+    assert token not in request.full_url
+    assert token not in repr(client.settings)
+
+
+def test_no_token_means_no_authorization_header(
+    connect: Callable[[object], tuple[APIClient, MemoryTransport]],
+) -> None:
+    """An empty UI_API_TOKEN sends nothing rather than an empty bearer value."""
+    client, transport = connect({"status": "ready", "revision": "0004"})
+
+    client.ready()
+
+    assert transport.calls[0][0].get_header("Authorization") is None
+
+
+@pytest.mark.parametrize(
+    ("status", "words"),
+    [(401, "UI_API_TOKEN"), (403, "analyst role"), (429, "Wait a minute")],
+)
+def test_access_errors_explain_what_to_do(
+    connect: Callable[[object], tuple[APIClient, MemoryTransport]],
+    status: int,
+    words: str,
+) -> None:
+    """401, 403 and 429 get specific, safe messages."""
+    client, transport = connect(None)
+    transport.error = HTTPError(
+        "http://127.0.0.1:8000/api", status, "denied", Message(), io.BytesIO(b"{}")
+    )
+
+    with pytest.raises(APIError) as caught:
+        client.ready()
+
+    assert words in caught.value.message

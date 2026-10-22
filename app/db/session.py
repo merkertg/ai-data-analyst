@@ -13,27 +13,36 @@ class DatabaseNotConfigured(RuntimeError):
     """DATABASE_URL не задан; текст ошибки не содержит адреса и пароля."""
 
 
-def create_database_engine(database_url: str) -> Engine:
+def create_database_engine(
+    database_url: str, statement_timeout_ms: int = 15_000
+) -> Engine:
     """Создать пул соединений; настоящее соединение откроет первый запрос.
 
     pool_pre_ping проверяет соединение из пула перед выдачей: после
     перезапуска PostgreSQL приложение не получит «мёртвое» соединение.
     connect_timeout ограничивает ожидание недоступного сервера тремя секундами.
+    statement_timeout (этап 09) задаётся при подключении: PostgreSQL сама
+    прерывает любой запрос этого соединения, который выполняется дольше.
     """
     return create_engine(
         database_url,
         pool_pre_ping=True,
-        connect_args={"connect_timeout": 3},
+        connect_args={
+            "connect_timeout": 3,
+            "options": f"-c statement_timeout={int(statement_timeout_ms)}",
+        },
     )
 
 
 @lru_cache
 def get_engine() -> Engine:
     """Один пул на процесс; импорт приложения и /health не требуют базы."""
-    database_url = get_settings().database_url
-    if database_url is None:
+    settings = get_settings()
+    if settings.database_url is None:
         raise DatabaseNotConfigured("DATABASE_URL не задан")
-    return create_database_engine(database_url)
+    return create_database_engine(
+        settings.database_url, settings.database_statement_timeout_ms
+    )
 
 
 def get_session() -> Iterator[Session]:

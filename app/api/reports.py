@@ -3,14 +3,21 @@
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Body, HTTPException, Query, Response
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, Response
 
+from app.api.auth import AUTH_RESPONSES, WRITE_RESPONSES, get_principal, limit_reports
 from app.api.dependencies import ReadSession, WriteSession
 from app.api.errors import DATABASE_RESPONSES
 from app.schemas.reports import ReportList, ReportOut, ReportRequest, ReportSummary
 from app.services import reports
 
-router = APIRouter(prefix="/api/reports", tags=["reports"])
+# Stage 09: every route needs a valid API token (any role reads).
+router = APIRouter(
+    prefix="/api/reports",
+    tags=["reports"],
+    dependencies=[Depends(get_principal)],
+    responses=AUTH_RESPONSES,
+)
 
 NOT_FOUND: dict[int | str, dict[str, object]] = {
     404: {"description": "Report not found"},
@@ -18,7 +25,13 @@ NOT_FOUND: dict[int | str, dict[str, object]] = {
 }
 
 
-@router.post("", status_code=201, responses=DATABASE_RESPONSES)
+@router.post(
+    "",
+    status_code=201,
+    responses={**DATABASE_RESPONSES, **WRITE_RESPONSES},
+    # Saving runs the anomaly detector: analysts only, rate limited.
+    dependencies=[Depends(limit_reports)],
+)
 def create_report(
     request: Annotated[ReportRequest, Body()],
     session: WriteSession,

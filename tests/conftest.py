@@ -1,10 +1,15 @@
-"""Интеграционные проверки запускаются только на явно выбранной базе *_test.
+"""Общие фикстуры тестов: база *_test и вход под ролью аналитика.
 
-Локально без TEST_DATABASE_URL эти тесты пропускаются (pytest покажет skip),
-в GitHub Actions отсутствие адреса — ошибка: CI не должен молча их терять.
+Фикстуры PostgreSQL лежат здесь, а не в tests/integration/: ими пользуются
+и интеграционные тесты, и evals (tests/evals/), и проверки безопасности
+(tests/security/). Тесты с базой запускаются только на явно выбранной базе
+*_test. Локально без TEST_DATABASE_URL они пропускаются (pytest покажет
+skip), в GitHub Actions отсутствие адреса — ошибка: CI не должен молча их
+терять.
 """
 
 import os
+import uuid
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -15,13 +20,24 @@ from sqlalchemy import Engine, create_engine
 from sqlalchemy.engine import make_url
 from sqlalchemy.orm import Session
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
+from app.api.auth import agent_limiter, get_principal, report_limiter
+from app.main import app
+from app.security.tokens import Principal, Role
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 
 def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
-    """Пометить все тесты этой папки маркером integration (pytest -m integration)."""
+    """Пометить маркером integration каждый тест, которому нужна PostgreSQL.
+
+    Признак — папка tests/integration или фикстура тестовой базы среди
+    зависимостей теста: так evals и тесты безопасности с базой тоже
+    выбираются командой pytest -m integration.
+    """
     for item in items:
-        if "tests/integration" in str(item.path).replace(os.sep, "/"):
+        in_folder = "tests/integration" in str(item.path).replace(os.sep, "/")
+        uses_database = "test_database_url" in getattr(item, "fixturenames", ())
+        if in_folder or uses_database:
             item.add_marker(pytest.mark.integration)
 
 
@@ -96,3 +112,32 @@ def db_session(migrated_engine: Engine) -> Iterator[Session]:
         finally:
             session.close()
             transaction.rollback()
+
+
+# Кто «вошёл» в большинстве тестов: аналитик с фиксированным id. Права
+# проверяются отдельными тестами с маркером real_auth (tests/security/).
+TEST_ANALYST = Principal(
+    token_id=uuid.UUID("00000000-0000-4000-8000-000000000001"),
+    name="test analyst",
+    role=Role.ANALYST,
+)
+
+
+@pytest.fixture(autouse=True)
+def signed_in_analyst(request: pytest.FixtureRequest) -> Iterator[None]:
+    """Подставить аналитика вместо проверки токена и обнулить лимиты частоты.
+
+    Тесты API проверяют расчёты, а не доступ: без подмены каждый из них
+    получил бы 401. Тест с @pytest.mark.real_auth проходит настоящую
+    проверку токена по базе.
+    """
+    agent_limiter.reset()
+    report_limiter.reset()
+    if request.node.get_closest_marker("real_auth"):
+        yield
+        return
+    app.dependency_overrides[get_principal] = lambda: TEST_ANALYST
+    try:
+        yield
+    finally:
+        app.dependency_overrides.pop(get_principal, None)

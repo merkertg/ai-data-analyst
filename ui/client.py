@@ -37,9 +37,12 @@ from ui.config import UISettings
 MAX_RESPONSE_BYTES = 8 * 1024 * 1024
 
 _HTTP_MESSAGES = {
+    401: "The API token is missing or invalid. Set UI_API_TOKEN and restart.",
+    403: "Your API token does not allow this action (analyst role required).",
     404: "The requested record was not found.",
     413: "The analysis exceeded its context limit.",
     422: "The request parameters are invalid.",
+    429: "Too many requests for this token. Wait a minute and try again.",
     502: "The agent could not produce a valid report.",
     503: "The API is unavailable or not configured.",
     504: "The analysis timed out. Check history before trying again.",
@@ -139,6 +142,10 @@ class APIClient:
             url = f"{url}?{urlencode(parameters)}"
         data = body.model_dump_json().encode("utf-8") if body is not None else None
         headers = {"Accept": "application/json"}
+        if self.settings.api_token is not None:
+            # The token goes only to the configured local API origin.
+            token = self.settings.api_token.get_secret_value()
+            headers["Authorization"] = f"Bearer {token}"
         if data is not None:
             headers["Content-Type"] = "application/json"
         request = Request(url, data=data, headers=headers)

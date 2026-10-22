@@ -16,6 +16,13 @@ from app.agents.mock import MockProvider, _language, _month_in
         ("What happened in July?", 7),
         ("Revenue for Sep vs Aug", 9),
         ("Почему упала выручка?", None),
+        # Stage 09 evals: words that start like a month are not months.
+        ("Which category drove the revenue decline in September 2026?", 9),
+        ("How did market share change in October?", 10),
+        ("Separate refunds from sales for Aug.", 8),
+        ("What may explain the drop in June?", 6),
+        ("Sales in May 2026", 5),
+        ("Revenue in sept. 2026", 9),
     ],
 )
 def test_first_named_month_is_the_target(question: str, month: int | None) -> None:

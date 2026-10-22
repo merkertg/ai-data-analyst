@@ -2,12 +2,12 @@
 
 from urllib.parse import urlsplit, urlunsplit
 
-from pydantic import Field, field_validator
+from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class UISettings(BaseSettings):
-    """Read UI_API_URL and UI_REQUEST_TIMEOUT_SECONDS without exposing secrets."""
+    """Read UI_API_URL, UI_API_TOKEN and the timeout without exposing secrets."""
 
     model_config = SettingsConfigDict(
         env_prefix="UI_",
@@ -21,6 +21,17 @@ class UISettings(BaseSettings):
     request_timeout_seconds: float = Field(
         default=150, ge=1, le=600, allow_inf_nan=False
     )
+    # Stage 09: the API requires a token. An analyst token lets the interface
+    # also save reports and ask the agent; a viewer token only reads.
+    api_token: SecretStr | None = Field(default=None, repr=False)
+
+    @field_validator("api_token", mode="before")
+    @classmethod
+    def blank_token_is_missing(cls, value: object) -> object:
+        """Treat an empty UI_API_TOKEN as not configured."""
+        if isinstance(value, str):
+            return value.strip() or None
+        return value
 
     @field_validator("api_url")
     @classmethod

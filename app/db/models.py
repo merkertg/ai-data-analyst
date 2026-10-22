@@ -272,3 +272,36 @@ class AgentRun(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
+
+
+class ApiToken(Base):
+    """API-токен доступа: роль, срок действия и отзыв; сам токен не хранится.
+
+    В базе лежит только SHA-256 токена и его первые символы для списка.
+    Отозванный или просроченный токен перестаёт работать сразу: каждый
+    запрос проверяет его заново.
+    """
+
+    __tablename__ = "api_tokens"
+    __table_args__ = (
+        CheckConstraint("role IN ('viewer', 'analyst')", name="role_allowed"),
+        CheckConstraint("length(btrim(name)) > 0", name="name_not_blank"),
+        CheckConstraint("token_hash ~ '^[0-9a-f]{64}$'", name="hash_is_sha256"),
+        CheckConstraint(
+            "expires_at IS NULL OR expires_at > created_at",
+            name="expires_after_creation",
+        ),
+        UniqueConstraint("token_hash"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    name: Mapped[str] = mapped_column(String(100))
+    role: Mapped[str] = mapped_column(String(16))
+    token_hash: Mapped[str] = mapped_column(String(64))
+    # Первые символы токена: по ним человек узнаёт токен в списке.
+    prefix: Mapped[str] = mapped_column(String(12))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

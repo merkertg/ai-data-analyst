@@ -9,8 +9,8 @@ from app.db.models import OrderStatus
 TABLES = Base.metadata.tables
 
 
-def test_domain_report_and_agent_tables_are_registered() -> None:
-    """Шесть таблиц продаж (этап 02), отчёты (этап 06) и запуски агента (07)."""
+def test_domain_report_agent_and_token_tables_are_registered() -> None:
+    """Таблицы продаж (02), отчёты (06), запуски агента (07) и токены (09)."""
     assert set(TABLES) == {
         "customers",
         "products",
@@ -20,6 +20,7 @@ def test_domain_report_and_agent_tables_are_registered() -> None:
         "inventory_snapshots",
         "reports",
         "agent_runs",
+        "api_tokens",
     }
 
 
@@ -27,6 +28,7 @@ def test_reports_are_not_linked_to_sales_rows() -> None:
     """Отчёт и запуск агента — снимки: у этих таблиц нет внешних ключей."""
     assert not TABLES["reports"].foreign_keys
     assert not TABLES["agent_runs"].foreign_keys
+    assert not TABLES["api_tokens"].foreign_keys
 
 
 def test_money_columns_are_exact_numeric() -> None:
