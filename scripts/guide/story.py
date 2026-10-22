@@ -42,6 +42,7 @@ from guide.stage05 import add_stage05
 from guide.stage06 import add_stage06
 from guide.stage07 import add_stage07
 from guide.stage08 import add_stage08
+from guide.stage09 import add_stage09
 from guide.toc import number_of, section
 
 # Плотные ячейки для таблиц итогов: страница итогов помещается целиком.
@@ -203,12 +204,12 @@ def build_story(verification, dependencies, lock_packages, facts, counts):
         Spacer(1, 8),
         callout(
             tr(
-                "<b>Границы проверки:</b> агент проверен с mock и поддельным SDK, "
-                "живой вызов OpenAI ещё не проверен. Интерфейс Streamlit работает "
-                "с тем же API; авторизация (09) и публикация (10) ещё впереди.",
-                "<b>Verification limits:</b> the agent was tested with mock and "
-                "a fake SDK; a live OpenAI call is still untested. The Streamlit UI "
-                "uses the same API; authentication (09) and release (10) come later.",
+                "<b>Границы проверки:</b> доступ по токенам и 42 eval-вопроса "
+                "добавлены на этапе 09, но настоящая модель OpenAI ещё не измерена — "
+                "нет ключа. Публикация в Docker (10) впереди.",
+                "<b>Verification limits:</b> token access and 42 eval questions "
+                "were added in Stage 09, but a real OpenAI model has not been "
+                "measured yet: there is no key. Docker release (10) comes next.",
             ),
             AMBER,
             AMBER_L,
@@ -237,6 +238,7 @@ def build_story(verification, dependencies, lock_packages, facts, counts):
     add_stage06(story)
     add_stage07(story)
     add_stage08(story)
+    add_stage09(story)
 
     # CI on GitHub Actions
     remote = verification["remote_ci"]
@@ -366,16 +368,21 @@ def build_story(verification, dependencies, lock_packages, facts, counts):
             "uv run python -m streamlit run ui/main.py --server.address 127.0.0.1",
         ),
         (
+            tr("Выдать токен", "Issue a token"),
+            "uv run python -m app.security issue --name me --role analyst",
+        ),
+        (
             tr("Выручка через API", "Revenue via the API"),
-            "curl '127.0.0.1:8000/api/metrics/revenue?start=2026-09-01&end=2026-10-01'",
+            'curl -H "Authorization: Bearer $TOKEN" '
+            "'127.0.0.1:8000/api/metrics/revenue?start=2026-09-01&end=2026-10-01'",
         ),
         (
-            tr("Сохранённые отчёты", "Saved reports"),
-            "curl '127.0.0.1:8000/api/reports?limit=10'",
+            tr("Evals: эталон", "Evals: reference"),
+            "uv run python -m app.evals --bundle data/demo --provider reference",
         ),
         (
-            tr("История агента", "Agent history"),
-            "curl '127.0.0.1:8000/api/agent/runs?limit=10'",
+            tr("Тесты безопасности", "Security tests"),
+            "uv run pytest tests/security tests/evals",
         ),
         (
             tr("Тестовая база", "Test database"),
@@ -537,6 +544,29 @@ def build_story(verification, dependencies, lock_packages, facts, counts):
             tr("Запустить db, проверить /ready", "Start db, check /ready"),
         ),
         (
+            mono("401 A valid API token is required"),
+            tr("Нет токена или он отозван", "No token, or it was revoked"),
+            tr(
+                "Выдать токен, UI_API_TOKEN в .env",
+                "Issue a token, set UI_API_TOKEN",
+            ),
+        ),
+        (
+            mono("403 … requires the analyst role"),
+            tr("Токен роли viewer", "A viewer token"),
+            tr("Токен analyst для записи", "Use an analyst token to write"),
+        ),
+        (
+            mono("429 Too many requests"),
+            tr("Лимит запусков агента", "Agent run limit reached"),
+            tr("Подождать Retry-After", "Wait Retry-After seconds"),
+        ),
+        (
+            tr("Evals: rows in the database", "Evals: rows in the database"),
+            tr("База загружена другим набором", "Database holds another bundle"),
+            tr("Загрузить тот же data/demo", "Load the same data/demo"),
+        ),
+        (
             tr("Данные пропали", "Data is gone"),
             mono("docker compose down -v"),
             tr("Без -v том сохраняется", "Without -v the volume stays"),
@@ -686,6 +716,26 @@ def build_story(verification, dependencies, lock_packages, facts, counts):
                 "The result is computed once and stored as JSONB; GET returns the snapshot, not a recalculation.",
             ),
         ),
+        (
+            tr(
+                "Почему в базе хранится SHA-256 токена, а не сам токен?",
+                "Why does the database keep the token's SHA-256, not the token?",
+            ),
+            tr(
+                "Украденная копия базы не даст рабочих токенов; 256 случайных бит не перебрать, поэтому быстрого хэша достаточно.",
+                "A stolen database copy yields no working tokens; 256 random bits cannot be guessed, so a fast hash is enough.",
+            ),
+        ),
+        (
+            tr(
+                "Что доказывает эталонный прогон evals 42 из 42?",
+                "What does the 42-of-42 reference eval run prove?",
+            ),
+            tr(
+                "Что SQL-инструменты и независимый расчёт Pandas из CSV совпали на всех вопросах; о качестве модели он ничего не говорит.",
+                "That the SQL tools and an independent Pandas calculation from CSV agree on every question; it says nothing about a model.",
+            ),
+        ),
     ]
     for index, (question, answer) in enumerate(questions, start=1):
         story += [
@@ -710,10 +760,12 @@ def build_story(verification, dependencies, lock_packages, facts, counts):
         callout(
             tr(
                 "<b>Этап 02.</b> Столбец products.is_active (boolean, NOT NULL, по умолчанию "
-                "true) новой миграцией 0004 с server_default; alembic check молчит, откат "
+                "true) новой миграцией со следующим номером после alembic heads и "
+                "server_default; alembic check молчит, откат "
                 "downgrade -1 работает, есть тест.",
                 "<b>Stage 02.</b> A products.is_active column (boolean, NOT NULL, default "
-                "true) via a new migration 0004 with server_default; alembic check is quiet, "
+                "true) via a new migration numbered after alembic heads with "
+                "server_default; alembic check is quiet, "
                 "downgrade -1 works, a test exists.",
             ),
             TEAL,
@@ -731,6 +783,21 @@ def build_story(verification, dependencies, lock_packages, facts, counts):
             ),
             BLUE,
             BLUE_L,
+        ),
+        Spacer(1, 6),
+        callout(
+            tr(
+                "<b>Этап 09.</b> Вопрос «Сколько оплаченных заказов было в июле 2026?» "
+                "в evals/cases.json: ожидание paid_orders, эталонный вызов "
+                "compare_periods, цитата current.paid_orders; эталонный прогон — "
+                "43 из 43.",
+                "<b>Stage 09.</b> The question “How many paid orders were there in "
+                "July 2026?” in evals/cases.json: expectation paid_orders, reference "
+                "call compare_periods, cite current.paid_orders; the reference run "
+                "passes 43 of 43.",
+            ),
+            VIOLET,
+            VIOLET_L,
         ),
     ]
 

@@ -14,7 +14,7 @@ Lint, types and tests (ubuntu-24.04, up to 10 minutes)
   checkout → uv 0.12.23 + Python 3.12 → uv sync --locked
   → ruff check → ruff format --check → mypy app ui tests migrations
   → alembic upgrade head → alembic check → downgrade base + upgrade head
-  → pytest (unit + integration)
+  → pytest (unit + integration, security, agent evals)
 ```
 
 ## Job and steps

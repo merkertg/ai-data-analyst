@@ -116,21 +116,29 @@ curl http://127.0.0.1:8000/health
 curl http://127.0.0.1:8000/ready
 ```
 
-`/health` returns `{"status":"ok"}` — the process is up. `/ready` returns `{"status":"ready","revision":"0003"}` — the database is reachable and migrated; otherwise it answers `503`. Interactive documentation: <http://127.0.0.1:8000/docs>. Stop the server with `Ctrl+C`, and PostgreSQL with `docker compose stop`.
+`/health` returns `{"status":"ok"}` — the process is up. `/ready` returns `{"status":"ready","revision":"0004"}` — the database is reachable and migrated; otherwise it answers `503`. Interactive documentation: <http://127.0.0.1:8000/docs>. Stop the server with `Ctrl+C`, and PostgreSQL with `docker compose stop`.
+
+The `/api` routes need an API token (Stage 09). Issue one for yourself and keep it; it is shown only once (details in [Access tokens](security.md)):
+
+```bash
+uv run python -m app.security issue --name "local analyst" --role analyst
+```
 
 The same analytics are available over HTTP once data is loaded:
 
 ```bash
-curl "http://127.0.0.1:8000/api/metrics/revenue?start=2026-09-01&end=2026-10-01&compare_start=2026-08-01&compare_end=2026-09-01"
-curl "http://127.0.0.1:8000/api/analytics/anomalies?start=2026-01-01&end=2026-10-01"
+TOKEN='ida_…'
+curl -H "Authorization: Bearer $TOKEN" "http://127.0.0.1:8000/api/metrics/revenue?start=2026-09-01&end=2026-10-01&compare_start=2026-08-01&compare_end=2026-09-01"
+curl -H "Authorization: Bearer $TOKEN" "http://127.0.0.1:8000/api/analytics/anomalies?start=2026-01-01&end=2026-10-01"
 ```
 
-See [Using the API](usage.md) for every endpoint, parameters and saved reports. There is no authentication yet: keep the server on `127.0.0.1`.
+See [Using the API](usage.md) for every endpoint, parameters and saved reports. Without HTTPS keep the server on `127.0.0.1`.
 
-Ask the AI analyst. The default `mock` provider needs no key; see [AI analyst](agent.md) to use OpenAI:
+Ask the AI analyst. The default `mock` provider needs no model key; see [AI analyst](agent.md) to use OpenAI:
 
 ```bash
 curl -X POST http://127.0.0.1:8000/api/agent/runs \
+  -H "Authorization: Bearer $TOKEN" \
   -H 'Content-Type: application/json' \
   -d '{"question": "Why did revenue fall in September?"}'
 ```

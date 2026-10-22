@@ -22,7 +22,7 @@ Endpoints after Stage 07 and how to call them. Start PostgreSQL, apply migration
 | `GET /api/agent/runs/{run_id}`, `GET /api/agent/runs` | A stored investigation; the history, newest first |
 | `GET /docs`, `GET /redoc`, `GET /openapi.json` | Interactive and machine-readable documentation |
 
-All analytics routes are read-only (`REPEATABLE READ READ ONLY`) except `POST /api/reports` and `POST /api/agent/runs`, which store a report or a run; the agent's tools themselves only read. There is no authentication yet: run the server on `127.0.0.1` only. Access control arrives in Stage 09.
+All analytics routes are read-only (`REPEATABLE READ READ ONLY`) except `POST /api/reports` and `POST /api/agent/runs`, which store a report or a run; the agent's tools themselves only read. Every `/api` route needs `Authorization: Bearer <token>`: viewers read, analysts also save reports and ask the agent (see [Access tokens](security.md)). Without HTTPS run the server on `127.0.0.1` only.
 
 ## Parameters
 
@@ -41,11 +41,12 @@ Metric and analytics query models reject unknown parameters with 422. The report
 
 ```bash
 B=http://127.0.0.1:8000
-curl "$B/api/metrics/revenue?start=2026-09-01&end=2026-10-01&compare_start=2026-08-01&compare_end=2026-09-01"
-curl "$B/api/metrics/orders?start=2026-09-01&end=2026-10-01"
-curl "$B/api/analytics/categories?start=2026-09-01&end=2026-10-01&compare_start=2026-08-01&compare_end=2026-09-01"
-curl "$B/api/analytics/regions?start=2026-09-01&end=2026-10-01&compare_start=2026-08-01&compare_end=2026-09-01"
-curl "$B/api/analytics/anomalies?start=2026-01-01&end=2026-10-01&seed=42"
+AUTH="Authorization: Bearer $TOKEN"
+curl -H "$AUTH" "$B/api/metrics/revenue?start=2026-09-01&end=2026-10-01&compare_start=2026-08-01&compare_end=2026-09-01"
+curl -H "$AUTH" "$B/api/metrics/orders?start=2026-09-01&end=2026-10-01"
+curl -H "$AUTH" "$B/api/analytics/categories?start=2026-09-01&end=2026-10-01&compare_start=2026-08-01&compare_end=2026-09-01"
+curl -H "$AUTH" "$B/api/analytics/regions?start=2026-09-01&end=2026-10-01&compare_start=2026-08-01&compare_end=2026-09-01"
+curl -H "$AUTH" "$B/api/analytics/anomalies?start=2026-01-01&end=2026-10-01&seed=42"
 ```
 
 Verified on the seed 42 demo dataset (20,000 orders): September vs August net revenue `-165497371.86` (`-26.18`%), pumps account for `83.75`% of the decline, and the detector returns 33 candidates. Money values are JSON strings, for example `"466678757.35"`; undefined values (AOV without orders, a percentage of a zero baseline) are `null`. Metric and contribution responses state `"currency": "RUB"` and `"timezone": "Europe/Moscow"`; anomaly results and stored records have their own shapes.
@@ -54,6 +55,7 @@ Verified on the seed 42 demo dataset (20,000 orders): September vs August net re
 
 ```bash
 curl -i -X POST "$B/api/reports" \
+  -H "$AUTH" \
   -H 'Content-Type: application/json' \
   -d '{"kind":"comparison","start":"2026-09-01","end":"2026-10-01","compare_start":"2026-08-01","compare_end":"2026-09-01","dimension":"category"}'
 ```
@@ -61,8 +63,8 @@ curl -i -X POST "$B/api/reports" \
 The answer is `201 Created` with `location: /api/reports/<uuid>` and the stored report: `id`, `kind`, `created_at`, `app_version`, `parameters` and `result`. An anomaly report uses `{"kind":"anomalies","start":"2026-01-01","end":"2026-10-01","seed":42}`.
 
 ```bash
-curl "$B/api/reports/<uuid>"
-curl "$B/api/reports?limit=10&offset=0"
+curl -H "$AUTH" "$B/api/reports/<uuid>"
+curl -H "$AUTH" "$B/api/reports?limit=10&offset=0"
 ```
 
 A report is a snapshot: it is computed once and never recomputed, so it keeps describing the data at the time it was saved. Reports are stored in the `reports` table added by migration `0002`.
@@ -75,7 +77,7 @@ curl -i "$B/ready"
 
 | Situation | Response |
 | --- | --- |
-| Database running, migrations applied | `200` `{"status":"ready","revision":"0003"}` |
+| Database running, migrations applied | `200` `{"status":"ready","revision":"0004"}` |
 | `docker compose stop db` | `503` `{"detail":"Database is not ready"}` |
 | Database started again | `200` — the pool reconnects without restarting the API |
 
@@ -87,6 +89,9 @@ curl -i "$B/ready"
 | --- | --- |
 | `200 OK` | Successful read |
 | `201 Created` | Report or completed agent run saved; see the `location` header |
+| `401 Unauthorized` | Missing, malformed, unknown, revoked or expired API token (one answer for all) |
+| `403 Forbidden` | A viewer token tried to save a report or ask the agent |
+| `429 Too Many Requests` | Per-token limit for saving reports or agent runs; see `Retry-After` |
 | `404 Not Found` | Unknown path, report UUID (`{"detail":"Report not found"}`) or agent run UUID (`{"detail":"Agent run not found"}`) |
 | `405 Method Not Allowed` | Wrong method, for example `POST /health` |
 | `422 Unprocessable Content` | Invalid parameters or body; the database is not touched |

@@ -10,9 +10,21 @@ Where each part of the application, tests, and documentation lives.
 app/
   __init__.py            # Package marker and the code version (__version__)
   config.py              # Settings from environment variables and .env; get_settings()
+  security/
+    tokens.py            # Token format, SHA-256, roles and the Principal type
+    service.py           # Issue, list, revoke and authenticate tokens in PostgreSQL
+    __main__.py          # Token CLI: python -m app.security issue|list|revoke
+  evals/
+    oracle.py            # Independent Pandas answers from the CSV bundle, in integer kopecks
+    cases.py             # Eval case schema and expected values from the oracle
+    reference.py         # Scripted provider answering each case with its recorded calls
+    runner.py            # Run cases through the production runtime and score them
+    __main__.py          # Eval CLI: python -m app.evals --bundle … --provider …
   main.py                # FastAPI application, /health, /ready, error handlers and /api routers
   api/
     dependencies.py      # Lazy read-only snapshot and write sessions injected with Depends
+    auth.py              # Bearer token check, analyst role, per-token rate limits
+    rate_limit.py        # In-process sliding-window rate limiter
     errors.py            # Unavailable database -> 503; agent errors -> their own safe status
     metrics.py           # GET /api/metrics/revenue and /orders
     analytics.py         # GET /api/analytics/categories, /regions and /anomalies
@@ -41,8 +53,8 @@ app/
     agents.py            # Run a question, store outcomes and handled agent failures, read history
   db/
     base.py              # DeclarativeBase and the constraint naming convention
-    models.py            # Six sales tables, reports (Stage 06) and agent_runs (Stage 07)
-    session.py           # Lazy engine (connection pool) and sessions
+    models.py            # Sales tables, reports (06), agent_runs (07) and api_tokens (09)
+    session.py           # Lazy engine (connection pool), statement timeout and sessions
     readiness.py         # Schema version in the database vs the latest migration
     sample.py            # Small sample dataset with hand-computed answers (python -m app.db.sample)
   data/
@@ -66,10 +78,15 @@ migrations/
     0001_initial_schema.py   # Six tables with keys, checks and indexes
     0002_add_saved_reports.py  # reports: UUID, kind, JSONB parameters and result, version, time
     0003_add_agent_runs.py     # agent_runs: question, status, report or error, JSONB trace
+    0004_add_api_tokens.py     # api_tokens: name, role, SHA-256 hash, prefix, expiry, revocation
+evals/
+  cases.json             # 42 eval questions; expected values are computed, not stored
+  results/               # Recorded eval runs (reference, mock)
 data/demo/               # Generated CSV, manifest and ground truth; ignored by Git
 sql/
   01_paid_order_totals.sql ... 04_double_counting.sql   # Hand-written queries, verified by tests
 tests/
+  conftest.py            # Shared *_test database fixtures, integration marking, test analyst
   test_health.py, test_config.py, test_version.py      # Stage 01 unit tests
   test_ready.py, test_session.py, test_models.py       # Stage 02 unit tests, no database
   test_demo_data.py, test_data_quality.py              # Stage 03 generation, bundle and quality unit tests
@@ -80,8 +97,12 @@ tests/
   test_agent_tools.py, test_agent_evidence.py         # Stage 07 strict schemas, rejected calls, evidence rules
   test_agent_runtime.py, test_agent_mock.py           # Loop with a scripted model; demo planner
   test_openai_provider.py, test_agent_api.py          # Fake OpenAI SDK; agent routes without SQL
+  security/              # Stage 09: tokens, roles, rate limits, SQL limits, hostile model
+    test_auth.py, test_tokens.py, test_sql_safety.py, test_agent_safety.py
+  evals/                 # Stage 09: eval set, Pandas oracle, scoring, full seed-42 runs
+    conftest.py          # Hand-made CSV bundle with hand-computed answers
+    test_cases_file.py, test_oracle.py, test_scoring.py, test_agent_evals.py
   integration/           # Real PostgreSQL from TEST_DATABASE_URL (*_test only)
-    conftest.py          # Safety checks, migrated schema, rolled-back session per test
     test_migrations.py   # Upgrade, downgrade, alembic check, /ready
     test_constraints.py  # Integrity rules, delete rules, exact money, time zones
     test_queries.py      # The sql/ files on the sample dataset
@@ -97,7 +118,8 @@ scripts/
   guide/                 # Guide modules: language pairs, layout, diagrams, project data, section texts
 docs/
   instructions/          # Short task-oriented instructions (English)
-  STAGE_01.md ... STAGE_07.md   # Detailed stage guides (Russian)
+  STAGE_01.md ... STAGE_09.md   # Detailed stage guides (Russian)
+  SECURITY.md, EVALUATION.md    # Threat model and controls; eval method and results
   CI_CD.md               # CI/CD guide (Russian)
   APPROACH.md            # Problem, solution, data model and architecture
   adr/                   # Architecture decision records
@@ -114,7 +136,7 @@ pyproject.toml           # Project metadata, dependencies, pytest/Ruff/mypy/uv s
 uv.lock                  # Exact versions and hashes of all resolved packages
 ```
 
-The REST API (Stage 06) lives in `app/api/`, the AI analyst (Stage 07) in `app/agents/` and `app/llm/`. The Streamlit interface (Stage 08) lives in `ui/`; it calls the API over HTTP. Planned additions follow the course plan: `tests/evals/` and `tests/security/` in Stage 09.
+The REST API (Stage 06) lives in `app/api/`, the AI analyst (Stage 07) in `app/agents/` and `app/llm/`. The Streamlit interface (Stage 08) lives in `ui/`; it calls the API over HTTP. Access control and agent evals (Stage 09) live in `app/security/`, `app/evals/`, `evals/`, `tests/security/` and `tests/evals/`. Docker and publication follow in Stage 10.
 
 ## Configuration in pyproject.toml
 
@@ -127,7 +149,7 @@ The REST API (Stage 06) lives in `app/api/`, the AI analyst (Stage 07) in `app/a
 | `[tool.ruff]`, `[tool.ruff.lint]` | Python 3.12 target, line length 88, rules `E F I UP B` |
 | `[tool.mypy]` | Strict mode with the Pydantic plugin |
 
-The project is an application, not a package: it was created with `uv init --app --no-package`, has no `[build-system]`, and is not installed into `.venv`. The reasons are recorded in [ADR 0001](../adr/0001-application-layout-and-tooling.md); the database decisions are in [ADR 0002](../adr/0002-postgresql-schema-and-migrations.md); generation and safe loading are in [ADR 0003](../adr/0003-reproducible-demo-data-and-safe-loading.md); the deterministic analytics contract is in [ADR 0004](../adr/0004-deterministic-analytics-core.md); anomaly detection and offline coverage limits are in [ADR 0005](../adr/0005-anomaly-detection-and-offline-evaluation.md); the REST API and saved reports are in [ADR 0006](../adr/0006-rest-api-and-saved-reports.md); the AI agent is in [ADR 0007](../adr/0007-ai-agent-tool-calling.md).
+The project is an application, not a package: it was created with `uv init --app --no-package`, has no `[build-system]`, and is not installed into `.venv`. The reasons are recorded in [ADR 0001](../adr/0001-application-layout-and-tooling.md); the database decisions are in [ADR 0002](../adr/0002-postgresql-schema-and-migrations.md); generation and safe loading are in [ADR 0003](../adr/0003-reproducible-demo-data-and-safe-loading.md); the deterministic analytics contract is in [ADR 0004](../adr/0004-deterministic-analytics-core.md); anomaly detection and offline coverage limits are in [ADR 0005](../adr/0005-anomaly-detection-and-offline-evaluation.md); the REST API and saved reports are in [ADR 0006](../adr/0006-rest-api-and-saved-reports.md); the AI agent is in [ADR 0007](../adr/0007-ai-agent-tool-calling.md); the Streamlit interface is in [ADR 0008](../adr/0008-streamlit-interface.md); access control and agent evals are in [ADR 0009](../adr/0009-access-control-and-agent-evals.md).
 
 ## Streamlit interface (Stage 08)
 

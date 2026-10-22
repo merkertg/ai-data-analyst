@@ -55,6 +55,8 @@ Fixtures: `migrated_engine` builds the schema once per run with `alembic downgra
 | `tests/test_agent_runtime.py`, `tests/test_agent_mock.py` | The loop with a scripted model: parallel calls, tool errors, report correction, step, tool, time and context limits; the demo planner's month, year and language |
 | `tests/test_openai_provider.py`, `tests/test_agent_api.py` | A fake OpenAI SDK: request parameters, parsing, refusals, SDK errors mapped to safe errors without the key; 422 before SQL, 503 without a key, OpenAPI |
 | `tests/integration/test_agent_tools.py`, `tests/integration/test_agent_api.py` | Detail queries vs hand-checked sample answers, tools equal the REST API, a full mock run with verified evidence, history, a stored failed run, the `agent_runs` CHECK |
+| `tests/security/` | Stage 09: one 401 for every bad token, revocation and expiry, viewer writes → 403, rate limit → 429, every `/api` path without a token, token CLI and hash storage, SQL injection payloads, read-only tool sessions, statement timeout, a hostile scripted model, a planted prompt-injection number, no OpenAI key in stored failures, no runtime access to the answer key |
+| `tests/evals/` | Stage 09: the 42-question set, the Pandas oracle against hand-computed answers, scoring rules, and full seed-42 runs: the reference provider must pass every case and the mock exactly its recorded 17 |
 
 Useful options:
 
@@ -116,6 +118,14 @@ uv run --locked pytest tests/integration/test_agent_api.py
 ```
 
 No test calls a real model or needs an OpenAI key: the runtime is tested with a scripted provider, the OpenAI provider with a fake SDK, and the full run with the `mock` provider over the real tools. For a server smoke check, start the API against a dedicated `_test` database with the loaded bundle and call `POST /api/agent/runs` as in [AI analyst](agent.md). A live check with OpenAI needs `LLM_PROVIDER=openai`, a key and a model in `.env`; record its result separately, it is not part of CI.
+
+## Security and evals
+
+```bash
+uv run --locked pytest tests/security tests/evals
+```
+
+Most tests run as a fixed test analyst (an autouse fixture in `tests/conftest.py`), so API tests check results rather than access. Tests marked `real_auth` issue real tokens in the `_test` database and go through the bearer check. Any test that uses the test database fixture is marked `integration`, including tests outside `tests/integration/`. The eval runs load the seed 42 bundle into the rolled-back test transaction; they take about 15 seconds. To evaluate a real model, see [Agent evals](evals.md).
 
 ## Migrations
 

@@ -36,7 +36,103 @@ from guide.layout import (
 )
 
 # Сколько этапов курса уже выполнено: зелёные карточки дорожной карты.
-STAGES_DONE = 8
+STAGES_DONE = 9
+
+
+def auth_flow(c, w, h):
+    """A request passes the format, token, role and rate checks before the route."""
+    gap, bh = 12, 46
+    steps = [
+        (tr("Формат", "Format"), "ida_ + 43", SLATE_L, MUTED),
+        ("SHA-256", tr("есть, не отозван", "known, not revoked"), BLUE_L, BLUE),
+        (tr("Роль", "Role"), "viewer / analyst", VIOLET_L, VIOLET),
+        (
+            tr("Лимит", "Limit"),
+            tr("6 запусков в мин.", "6 runs per min"),
+            AMBER_L,
+            AMBER,
+        ),
+        (tr("Маршрут", "Route"), "/api/…", GREEN_L, GREEN),
+    ]
+    failures = ["401", "401", "403", "429"]
+    bw = (w - gap * (len(steps) - 1)) / len(steps)
+    top = h - bh - 4
+    for index, (title, sub, fill, edge) in enumerate(steps):
+        x = index * (bw + gap)
+        node(c, x, top, bw, bh, title, sub, fill, edge)
+        if index < len(steps) - 1:
+            arrow(c, x + bw + 1, top + bh / 2, x + bw + gap - 1, top + bh / 2)
+            arrow(c, x + bw / 2, top - 2, x + bw / 2, 26, ORANGE)
+            chip(c, x + bw / 2 - 14, 8, failures[index], ORANGE, WHITE, "PT-Bold", 8.5)
+
+
+def eval_flow(c, w, h):
+    """Questions run through the real runtime; an independent oracle scores them."""
+    gap, bh = 18, 46
+    bw = (w - 2 * gap) / 3
+    top, low = h - bh - 4, 6
+    node(
+        c,
+        0,
+        top,
+        bw,
+        bh,
+        "evals/cases.json",
+        tr("42 вопроса", "42 questions"),
+        SLATE_L,
+        MUTED,
+    )
+    node(
+        c,
+        bw + gap,
+        top,
+        bw,
+        bh,
+        tr("Runtime + инструменты", "Runtime + tools"),
+        "SQL · PostgreSQL",
+        BLUE_L,
+        BLUE,
+    )
+    node(
+        c,
+        2 * (bw + gap),
+        top,
+        bw,
+        bh,
+        tr("Отчёт", "Report"),
+        tr("доказательства", "evidence"),
+        VIOLET_L,
+        VIOLET,
+    )
+    node(c, 0, low, bw, bh, tr("CSV-набор", "CSV bundle"), "seed 42", SLATE_L, MUTED)
+    node(
+        c,
+        bw + gap,
+        low,
+        bw,
+        bh,
+        tr("Эталон Pandas", "Pandas oracle"),
+        tr("копейки, без SQL", "kopecks, no SQL"),
+        TEAL_L,
+        TEAL,
+    )
+    node(
+        c,
+        2 * (bw + gap),
+        low,
+        bw,
+        bh,
+        tr("Оценка", "Score"),
+        tr("значения, инструменты, отказы", "values, tools, refusals"),
+        GREEN_L,
+        GREEN,
+    )
+    arrow(c, bw + 2, top + bh / 2, bw + gap - 2, top + bh / 2)
+    arrow(c, 2 * bw + gap + 2, top + bh / 2, 2 * (bw + gap) - 2, top + bh / 2)
+    arrow(c, bw + 2, low + bh / 2, bw + gap - 2, low + bh / 2, TEAL)
+    arrow(c, 2 * bw + gap + 2, low + bh / 2, 2 * (bw + gap) - 2, low + bh / 2, TEAL)
+    middle = 2 * (bw + gap) + bw / 2
+    arrow(c, middle, top - 2, middle, low + bh + 2, VIOLET)
 
 
 def ui_flow(c, w, h):

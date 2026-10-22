@@ -6,10 +6,11 @@ Ask questions in natural language; the agent calls read-only analytics tools and
 
 ## Start
 
-Apply migrations (head is `0003`), load data and start the server as in the [quickstart](quickstart.md). The default provider is `mock`: real tools and checks, no language model, no key.
+Apply migrations (head is `0004`), load data, start the server and issue an **analyst** token as in the [quickstart](quickstart.md). The default provider is `mock`: real tools and checks, no language model, no key.
 
 ```bash
 curl -i -X POST http://127.0.0.1:8000/api/agent/runs \
+  -H "Authorization: Bearer $TOKEN" \
   -H 'Content-Type: application/json' \
   -d '{"question": "Why did revenue fall in September?"}'
 ```
@@ -63,8 +64,8 @@ A report is accepted only when every evidence value matches a successful tool re
 ## History
 
 ```bash
-curl http://127.0.0.1:8000/api/agent/runs?limit=10
-curl http://127.0.0.1:8000/api/agent/runs/<uuid>
+curl -H "Authorization: Bearer $TOKEN" "http://127.0.0.1:8000/api/agent/runs?limit=10"
+curl -H "Authorization: Bearer $TOKEN" http://127.0.0.1:8000/api/agent/runs/<uuid>
 ```
 
 Handled `LLMError` failures after a run starts are stored with the partial tool trace when the database write succeeds. Provider errors after startup can therefore return `503` with a `run_id`. Configuration errors before startup, SQL/tool availability failures and failed history writes do not have a reliable stored run. Unexpected exceptions are not automatically recorded as failed runs.
@@ -74,6 +75,9 @@ Handled `LLMError` failures after a run starts are stored with the partial tool 
 | Code | When |
 | --- | --- |
 | `201` | Verified report |
+| `401` | Missing or invalid API token |
+| `403` | The token has the viewer role; asking needs analyst |
+| `429` | More than `AGENT_RUNS_PER_MINUTE` (default 6) runs for this token in a minute |
 | `422` | Missing, blank or over-long question, or an extra field |
 | `502` | Step or tool limit, invalid model answer or failed evidence check (`run_id` after a successful history write) |
 | `503` | LLM settings missing, provider or database unavailable |

@@ -32,12 +32,13 @@ the project root on the import path for the `ui` and `app` packages.
 | --- | --- |
 | `UI_API_URL` | Backend URL; default `http://127.0.0.1:8000` |
 | `UI_REQUEST_TIMEOUT_SECONDS` | Network waiting timeout; default `150` seconds, range `1`–`600` |
+| `UI_API_TOKEN` | API token sent as `Authorization: Bearer`; issue it with `python -m app.security issue` ([Access tokens](security.md)). A `viewer` token shows the dashboard, history and reports; asking the agent and saving reports need `analyst` |
 
 Environment variables override `.env`. Restart Streamlit after changes.
 The backend URL must use HTTP or HTTPS and `localhost`, `127.0.0.1` or `[::1]`.
 Credentials, query parameters, fragments and paths other than `/` are rejected.
 The client does not follow redirects, use environment proxies or retry requests.
-Keep both processes bound to loopback while authentication is absent. Configure the OpenAI key only for the backend,
+The API requires a token since Stage 09; without HTTPS keep both processes bound to loopback. Configure the OpenAI key only for the backend,
 as described in [AI analyst](agent.md).
 
 For a different API port:
@@ -92,7 +93,8 @@ relabel a previous result.
 ## Errors and verification
 
 The client shows fixed public messages for connection errors, timeouts, invalid
-requests and backend failures. It does not display raw backend error bodies or
+requests and backend failures, and specific ones for a missing or invalid token
+(401: set `UI_API_TOKEN`), a viewer token on a write (403) and the rate limit (429). It does not display raw backend error bodies or
 tracebacks. Creation requests are not retried automatically. After a timeout,
 check history before resubmitting: backend work may have continued. The network
 waiting timeout is not a guaranteed total request deadline or cancellation.

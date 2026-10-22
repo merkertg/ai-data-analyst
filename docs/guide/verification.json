@@ -1,7 +1,7 @@
 {
-  "checked_at": "2026-10-21",
-  "base_commit": "2e34253 + worktree",
-  "stage": 8,
+  "checked_at": "2026-10-22",
+  "base_commit": "554d908 + worktree",
+  "stage": 9,
   "environment": {
     "os": {
       "ru": "macOS, Apple Silicon",
@@ -13,13 +13,13 @@
     "postgres": "17"
   },
   "tests": {
-    "total": 484,
-    "unit": 369,
-    "integration": 115,
-    "passed": 484,
+    "total": 578,
+    "unit": 423,
+    "integration": 155,
+    "passed": 578,
     "failed": 0,
     "skipped": 0,
-    "seconds": 6.41
+    "seconds": 21.66
   },
   "checks": [
     {
@@ -29,8 +29,44 @@
       },
       "command": "CI=true TEST_DATABASE_URL=... pytest",
       "result": {
-        "ru": "484 passed: 369 unit + 115 integration",
-        "en": "484 passed: 369 unit + 115 integration"
+        "ru": "578 passed: 423 unit + 155 integration",
+        "en": "578 passed: 423 unit + 155 integration"
+      },
+      "status": "pass"
+    },
+    {
+      "name": {
+        "ru": "Безопасность",
+        "en": "Security"
+      },
+      "command": "pytest tests/security",
+      "result": {
+        "ru": "55 passed: токены, роли, лимиты, SQL, враждебная модель",
+        "en": "55 passed: tokens, roles, limits, SQL, hostile model"
+      },
+      "status": "pass"
+    },
+    {
+      "name": {
+        "ru": "Evals: эталон",
+        "en": "Evals: reference"
+      },
+      "command": "python -m app.evals --provider reference",
+      "result": {
+        "ru": "42 / 42; SQL и Pandas совпали",
+        "en": "42 / 42; SQL and Pandas agree"
+      },
+      "status": "pass"
+    },
+    {
+      "name": {
+        "ru": "Evals: mock",
+        "en": "Evals: mock"
+      },
+      "command": "python -m app.evals --provider mock",
+      "result": {
+        "ru": "17 / 42; базовая линия записана",
+        "en": "17 / 42; baseline recorded"
       },
       "status": "pass"
     },
@@ -39,10 +75,10 @@
         "ru": "Линтер / формат",
         "en": "Lint / format"
       },
-      "command": "ruff check; ruff format --check",
+      "command": "ruff check . && ruff format --check .",
       "result": {
-        "ru": "Все проверки пройдены; 148 файлов",
-        "en": "All checks passed; 148 files"
+        "ru": "172 файла, включая Markdown",
+        "en": "172 files, Markdown included"
       },
       "status": "pass"
     },
@@ -53,8 +89,8 @@
       },
       "command": "mypy app ui tests migrations",
       "result": {
-        "ru": "Нет ошибок в 98 файлах",
-        "en": "No issues in 98 files"
+        "ru": "Нет ошибок в 122 файлах",
+        "en": "No issues in 122 files"
       },
       "status": "pass"
     },
@@ -65,8 +101,8 @@
       },
       "command": "alembic upgrade / check / downgrade",
       "result": {
-        "ru": "Схема 0003; новых миграций нет",
-        "en": "Schema 0003; no new migrations"
+        "ru": "Схема 0004; откат 0004 отдельно",
+        "en": "Schema 0004; 0004 rolls back alone"
       },
       "status": "pass"
     },
@@ -77,56 +113,32 @@
       },
       "command": "uv lock --check --offline",
       "result": {
-        "ru": "79 пакетов; Streamlit 1.65, Plotly 7.1",
-        "en": "79 packages; Streamlit 1.65, Plotly 7.1"
+        "ru": "79 пакетов; Pandas 3.0.6 объявлен явно",
+        "en": "79 packages; Pandas 3.0.6 declared"
       },
       "status": "pass"
     },
     {
       "name": {
-        "ru": "UI без сети",
-        "en": "Offline UI"
+        "ru": "Токены вживую",
+        "en": "Live tokens"
       },
-      "command": "pytest tests/test_ui_*.py",
+      "command": "app.security + uvicorn + curl",
       "result": {
-        "ru": "109 тестов; 16 из них AppTest",
-        "en": "109 tests; 16 use AppTest"
+        "ru": "401 без токена; viewer 200/403; 7-й запуск 429",
+        "en": "401 without a token; viewer 200/403; 7th run 429"
       },
       "status": "pass"
     },
     {
       "name": {
-        "ru": "Браузер",
-        "en": "Browser"
+        "ru": "Чистый клон",
+        "en": "Clean clone"
       },
-      "command": "Streamlit + FastAPI, seed 42",
+      "command": "git clone 554d908 + CI steps",
       "result": {
-        "ru": "20 000 заказов; 3 экрана; mock-ответ",
-        "en": "20,000 orders; 3 views; mock response"
-      },
-      "status": "pass"
-    },
-    {
-      "name": {
-        "ru": "Отчёты",
-        "en": "Reports"
-      },
-      "command": "POST reports; GET saved UUID",
-      "result": {
-        "ru": "2 вида; повторное открытие без пересчёта",
-        "en": "2 kinds; reopened without recomputing"
-      },
-      "status": "pass"
-    },
-    {
-      "name": {
-        "ru": "Нет API",
-        "en": "No API"
-      },
-      "command": "Stop Uvicorn; Load dashboard",
-      "result": {
-        "ru": "Безопасная ошибка без traceback",
-        "en": "Safe error without traceback"
+        "ru": "578 passed; миграции вверх, check, вниз",
+        "en": "578 passed; migrations up, check, down"
       },
       "status": "pass"
     }
@@ -140,48 +152,49 @@
     {
       "request": "GET /ready",
       "status": "200 OK",
-      "body": "{\"status\":\"ready\",\"revision\":\"0003\"}"
+      "body": "{\"status\":\"ready\",\"revision\":\"0004\"}"
     },
     {
-      "request": "GET /api/metrics/revenue",
+      "request": {
+        "ru": "GET /api/metrics/revenue без токена",
+        "en": "GET /api/metrics/revenue, no token"
+      },
+      "status": "401 Unauthorized",
+      "body": "\"A valid API token is required …\""
+    },
+    {
+      "request": "GET /api/metrics/revenue, viewer",
       "status": "200 OK",
-      "body": "net_revenue: \"466678757.35\"; change: -26.18%"
+      "body": "\"net_revenue\":\"466678757.35\""
     },
     {
-      "request": "GET /api/analytics/categories",
-      "status": "200 OK",
-      "body": "pumps: -138597069.79; contribution: 83.75%"
+      "request": "POST /api/agent/runs, viewer",
+      "status": "403 Forbidden",
+      "body": "\"This action requires the analyst role.\""
     },
     {
-      "request": "GET /api/analytics/anomalies",
-      "status": "200 OK",
-      "body": "finding_count: 33; seed: 42"
-    },
-    {
-      "request": "POST /api/agent/runs",
-      "status": "201 Created",
-      "body": "mock; 4 steps; 7 calls; 248 ms"
-    },
-    {
-      "request": "POST /api/reports",
+      "request": {
+        "ru": "POST /api/agent/runs, analyst ×6",
+        "en": "POST /api/agent/runs, analyst ×6"
+      },
       "status": "201 Created",
       "body": {
-        "ru": "Сравнение и аномалии; затем GET по UUID",
-        "en": "Comparison and anomalies; then GET by UUID"
+        "ru": "mock: проверенный отчёт",
+        "en": "mock: verified report"
       }
     },
     {
       "request": {
-        "ru": "UI: API остановлен",
-        "en": "UI: API stopped"
+        "ru": "POST /api/agent/runs, 7-й за минуту",
+        "en": "POST /api/agent/runs, 7th in a minute"
       },
-      "status": "Connection error",
-      "body": "Cannot reach the API. Check that it is running."
+      "status": "429 Too Many Requests",
+      "body": "retry-after: 59"
     },
     {
       "request": "POST /health",
       "status": "405 Method Not Allowed",
-      "body": "{\"detail\":\"Method Not Allowed\"}, allow: GET"
+      "body": "{\"detail\":\"Method Not Allowed\"}"
     },
     {
       "request": "GET /nope",
@@ -192,22 +205,22 @@
   "remote_ci": {
     "status": "not_verified",
     "detail": {
-      "ru": "Этап 08 проверен локально; удалённый запуск для него не подтверждён. Локальный успех не заменяет GitHub Actions.",
-      "en": "Stage 08 passed locally; its remote run is not confirmed. Local success does not replace GitHub Actions."
+      "ru": "Этап 09 проверен локально: код — коммит 554d908, документация — рабочее дерево поверх него. Удалённый запуск для него не подтверждён; последний подтверждённый пользователем зелёный запуск — 63f3550 (этап 06).",
+      "en": "Stage 09 passed locally: the code is commit 554d908 and the documentation is the working tree on top of it. Its remote run is not confirmed; the last run confirmed green by the user is 63f3550 (Stage 06)."
     }
   },
   "remaining": [
     {
-      "ru": "Этап 09: агентные evals и безопасность.",
-      "en": "Stage 09: agent evaluations and security."
+      "ru": "Этап 10: Docker-образы, docker compose up --build, аудит зависимостей и сборка в GitHub Actions.",
+      "en": "Stage 10: Docker images, docker compose up --build, dependency audit and image builds in GitHub Actions."
     },
     {
-      "ru": "Настоящая модель OpenAI не проверена: ключа нет. Подтвердить удалённый CI этапа 08.",
-      "en": "A real OpenAI model was not tested: no key. Confirm remote Stage 08 CI."
+      "ru": "Измерить настоящую модель OpenAI тем же набором из 42 вопросов, когда появится ключ.",
+      "en": "Measure a real OpenAI model with the same 42 questions once a key is available."
     },
     {
-      "ru": "UI не передаёт память диалога. Авторизации пока нет: только loopback; HTTP timeout не отменяет работу API.",
-      "en": "The UI does not send conversation memory. No authentication yet: loopback only; an HTTP timeout does not cancel API work."
+      "ru": "Вне 127.0.0.1 нужны HTTPS и общий счётчик лимитов; аудита действий пока нет.",
+      "en": "Beyond 127.0.0.1, HTTPS and shared rate-limit storage are needed; there is no audit trail yet."
     }
   ],
   "dataset": {
@@ -234,12 +247,12 @@
   },
   "pdf": {
     "pages": {
-      "ru": 48,
-      "en": 48
+      "ru": 51,
+      "en": 51
     },
     "visual_review": {
-      "ru": "Все 48 страниц обеих версий просмотрены; обложка, зависимости, разделы 37–39 и итоги дополнительно проверены крупно.",
-      "en": "All 48 pages in each version reviewed; cover, dependencies, sections 37–39 and results also inspected at full size."
+      "ru": "Все 51 страница обеих версий просмотрены на контактных листах; обложка, разделы 40–42, шпаргалка и итоги — крупно. Исправлены короткая стрелка в схеме evals и строка шпаргалки на отдельной странице.",
+      "en": "All 51 pages in each version reviewed on contact sheets; cover, sections 40–42, cheat sheet and results inspected at full size. Fixed a short arrow in the eval diagram and a cheat-sheet row on its own page."
     }
   },
   "analytics": {
@@ -437,5 +450,40 @@
     "percent": "-26.18",
     "pumps_contribution": "83.75",
     "anomaly_candidates": 33
+  },
+  "security": {
+    "migration": "0004",
+    "roles": [
+      "viewer",
+      "analyst"
+    ],
+    "agent_runs_per_minute": 6,
+    "reports_per_minute": 30,
+    "statement_timeout_ms": 15000,
+    "tests": 55
+  },
+  "evals": {
+    "cases": 42,
+    "languages": {
+      "ru": 27,
+      "en": 15
+    },
+    "reference": {
+      "passed": 42,
+      "value_accuracy": 1.0,
+      "median_ms": 7
+    },
+    "mock": {
+      "passed": 17,
+      "value_accuracy": 0.4737,
+      "tool_selection_rate": 0.9048,
+      "refusal_rate": 0.0,
+      "median_ms": 214
+    },
+    "openai": null,
+    "results": [
+      "evals/results/2026-10-22-reference.json",
+      "evals/results/2026-10-22-mock.json"
+    ]
   }
 }

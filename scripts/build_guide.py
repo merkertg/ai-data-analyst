@@ -45,6 +45,7 @@ from guide.toc import (
     STAGE_06_SECTIONS,
     STAGE_07_SECTIONS,
     STAGE_08_SECTIONS,
+    STAGE_09_SECTIONS,
 )
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
@@ -91,8 +92,8 @@ def cover_page(c, doc):
         left,
         PAGE_H - 180,
         tr(
-            f"Этапы 01–{STAGES_DONE:02d} · от базы к интерфейсу",
-            f"Stages 01–{STAGES_DONE:02d} · from data to an interface",
+            f"Этапы 01–{STAGES_DONE:02d} · от данных к проверенному агенту",
+            f"Stages 01–{STAGES_DONE:02d} · from data to a verified agent",
         ),
     )
     c.setFont("PT", 14)
@@ -201,7 +202,8 @@ def cover_page(c, doc):
             f"05: {STAGE_05_SECTIONS[0]}–{STAGE_05_SECTIONS[-1]} · "
             f"06: {STAGE_06_SECTIONS[0]}–{STAGE_06_SECTIONS[-1]} · "
             f"07: {STAGE_07_SECTIONS[0]}–{STAGE_07_SECTIONS[-1]} · "
-            f"08: {STAGE_08_SECTIONS[0]}–{STAGE_08_SECTIONS[-1]}",
+            f"08: {STAGE_08_SECTIONS[0]}–{STAGE_08_SECTIONS[-1]} · "
+            f"09: {STAGE_09_SECTIONS[0]}–{STAGE_09_SECTIONS[-1]}",
             f"01: {STAGE_01_SECTIONS[0]}–{STAGE_01_SECTIONS[-1]} · "
             f"02: {STAGE_02_SECTIONS[0]}–{STAGE_02_SECTIONS[-1]} · "
             f"03: {STAGE_03_SECTIONS[0]}–{STAGE_03_SECTIONS[-1]} · "
@@ -209,7 +211,8 @@ def cover_page(c, doc):
             f"05: {STAGE_05_SECTIONS[0]}–{STAGE_05_SECTIONS[-1]} · "
             f"06: {STAGE_06_SECTIONS[0]}–{STAGE_06_SECTIONS[-1]} · "
             f"07: {STAGE_07_SECTIONS[0]}–{STAGE_07_SECTIONS[-1]} · "
-            f"08: {STAGE_08_SECTIONS[0]}–{STAGE_08_SECTIONS[-1]}",
+            f"08: {STAGE_08_SECTIONS[0]}–{STAGE_08_SECTIONS[-1]} · "
+            f"09: {STAGE_09_SECTIONS[0]}–{STAGE_09_SECTIONS[-1]}",
         ),
     )
     c.setFont("PT", 8.6)
@@ -233,10 +236,14 @@ def cover_page(c, doc):
             c.setFillColor(HEX("#67E8F9"))
         elif number in STAGE_08_SECTIONS:
             c.setFillColor(HEX("#F9A8D4"))
+        elif number in STAGE_09_SECTIONS:
+            c.setFillColor(HEX("#A5B4FC"))
         else:
             c.setFillColor(HEX("#94A3B8"))
-        # Twenty-two rows stay above the footer; long titles retain two columns.
-        c.drawString(MARGIN + column * 250, 300 - row * 9.7, f"{number}  {tr(ru, en)}")
+        # The row step shrinks as sections are added, so the last row always
+        # stays above the footer line at y=82.
+        step = min(9.7, (300 - 90) / max(rows - 1, 1))
+        c.drawString(MARGIN + column * 250, 300 - row * step, f"{number}  {tr(ru, en)}")
     c.setStrokeColor(HEX("#334155"))
     c.line(MARGIN, 82, PAGE_W - MARGIN, 82)
     c.setFillColor(HEX("#64748B"))
@@ -379,15 +386,15 @@ def build_guide(output, verification, lang):
             bottomMargin=17 * mm,
             title="AI Data Analyst - "
             + tr(
-                f"этапы 01–{STAGES_DONE:02d}: аналитика, AI-агент и Streamlit",
-                f"stages 01–{STAGES_DONE:02d}: analytics, an AI agent and Streamlit",
+                f"этапы 01–{STAGES_DONE:02d}: аналитика, AI-агент, Streamlit и evals",
+                f"stages 01–{STAGES_DONE:02d}: analytics, agent, Streamlit, evals",
             ),
             author="AI Data Analyst",
             subject=tr(
                 "uv, FastAPI, PostgreSQL, SQL, аналитика, tool calling, "
-                "Streamlit, тесты и CI",
+                "Streamlit, безопасность, evals, тесты и CI",
                 "uv, FastAPI, PostgreSQL, SQL, analytics, tool calling, "
-                "Streamlit, tests and CI",
+                "Streamlit, security, evals, tests and CI",
             ),
             lang=lang,
         )
