@@ -9,6 +9,8 @@ from app.evals.oracle import Oracle, money
 
 SEP = (date(2026, 9, 1), date(2026, 10, 1))
 OCT = (date(2026, 10, 1), date(2026, 11, 1))
+EMPTY = (date(2026, 12, 1), date(2027, 1, 1))
+REFUND_ONLY = (date(2026, 10, 2), date(2026, 10, 3))
 
 
 def test_period_totals_match_the_hand_calculation(oracle: Oracle) -> None:
@@ -74,4 +76,116 @@ def test_expected_values(
     oracle: Oracle, expectation: Expectation, values: set[str]
 ) -> None:
     """Each metric kind gives the value computed by hand from the rows above."""
+    assert expected_values(expectation, oracle) == values
+
+
+@pytest.mark.parametrize("period", [EMPTY, REFUND_ONLY], ids=["empty", "refund-only"])
+def test_average_order_value_without_paid_orders_is_null(
+    oracle: Oracle, period: tuple[date, date]
+) -> None:
+    """Refund activity cannot define an average when there are no paid orders."""
+    assert expected_values(
+        Expectation(metric="average_order_value", period=period), oracle
+    ) == {"null"}
+
+
+@pytest.mark.parametrize("metric", ["change_absolute", "change_percent"])
+@pytest.mark.parametrize(
+    ("period", "previous"),
+    [
+        (EMPTY, SEP),
+        (SEP, EMPTY),
+        (REFUND_ONLY, SEP),
+        (SEP, REFUND_ONLY),
+        (EMPTY, EMPTY),
+    ],
+    ids=[
+        "empty-current",
+        "empty-previous",
+        "refund-current",
+        "refund-previous",
+        "both-empty",
+    ],
+)
+def test_aov_change_propagates_missing_operands(
+    oracle: Oracle,
+    metric: str,
+    period: tuple[date, date],
+    previous: tuple[date, date],
+) -> None:
+    """Neither absolute nor percent changes may replace an undefined AOV with zero."""
+    expectation = Expectation.model_validate(
+        {
+            "metric": metric,
+            "of": "average_order_value",
+            "period": period,
+            "previous": previous,
+        }
+    )
+    assert expected_values(expectation, oracle) == {"null"}
+
+
+@pytest.mark.parametrize(
+    "expectation",
+    [
+        Expectation(
+            metric="change_percent", of="net_revenue", period=SEP, previous=EMPTY
+        ),
+        Expectation(
+            metric="change_percent", of="paid_orders", period=SEP, previous=EMPTY
+        ),
+        Expectation(metric="refund_rate", name="Датчики", period=EMPTY),
+        Expectation(metric="refund_rate", name="Датчики", period=REFUND_ONLY),
+        Expectation(
+            metric="group_share",
+            dimension="category",
+            name="Насосы",
+            period=EMPTY,
+            previous=EMPTY,
+        ),
+    ],
+    ids=[
+        "zero-revenue-base",
+        "zero-order-base",
+        "empty-refund-rate",
+        "refunds-without-sales",
+        "zero-total-contribution",
+    ],
+)
+def test_undefined_rates_use_json_null(
+    oracle: Oracle, expectation: Expectation
+) -> None:
+    """The oracle quotes the same null token as the SQL tool's JSON evidence."""
+    assert expected_values(expectation, oracle) == {"null"}
+
+
+@pytest.mark.parametrize(
+    ("expectation", "values"),
+    [
+        (Expectation(metric="net_revenue", period=REFUND_ONLY), {"-500.00"}),
+        (Expectation(metric="paid_orders", period=REFUND_ONLY), {"0"}),
+        (
+            Expectation(
+                metric="change_absolute", of="net_revenue", period=EMPTY, previous=SEP
+            ),
+            {"-309900.02"},
+        ),
+        (
+            Expectation(
+                metric="change_percent", of="net_revenue", period=EMPTY, previous=SEP
+            ),
+            {"-100.00"},
+        ),
+        (
+            Expectation(
+                metric="change_absolute", of="paid_orders", period=EMPTY, previous=EMPTY
+            ),
+            {"0"},
+        ),
+    ],
+)
+def test_defined_zero_and_refund_only_values_stay_numeric(
+    oracle: Oracle, expectation: Expectation, values: set[str]
+) -> None:
+    """Missing AOV must not turn valid zero counts or negative net revenue into null."""
     assert expected_values(expectation, oracle) == values

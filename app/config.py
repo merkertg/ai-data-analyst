@@ -1,10 +1,11 @@
 """Настройки приложения из переменных окружения и локального файла .env."""
 
 from functools import lru_cache
+from typing import Self
 
-from pydantic import Field, field_validator
+from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from sqlalchemy.engine import make_url
+from sqlalchemy.engine import URL, make_url
 from sqlalchemy.exc import ArgumentError
 
 # Единственный поддерживаемый драйвер: psycopg 3 через SQLAlchemy.
@@ -36,6 +37,12 @@ class Settings(BaseSettings):
     # а /ready сообщает, что приложение ещё не готово. repr=False не даёт
     # паролю попасть в print(settings) и в журналы.
     database_url: str | None = Field(default=None, repr=False)
+    # Compose passes raw components so reserved password characters are safe.
+    database_host: str | None = None
+    database_port: int = Field(default=5432, ge=1, le=65535)
+    database_name: str | None = None
+    database_user: str | None = None
+    database_password: SecretStr | None = Field(default=None, repr=False)
     # Этап 09: любой SQL-запрос приложения дольше этого времени PostgreSQL
     # прерывает сама — тяжёлый запрос не займёт базу надолго.
     database_statement_timeout_ms: int = Field(default=15_000, ge=100, le=600_000)
@@ -43,6 +50,38 @@ class Settings(BaseSettings):
     # стоят дороже чтения (модель, детектор аномалий).
     agent_runs_per_minute: int = Field(default=6, ge=1, le=600)
     reports_per_minute: int = Field(default=30, ge=1, le=600)
+
+    @model_validator(mode="after")
+    def resolve_database_components(self) -> Self:
+        """Build a correctly escaped URL when no explicit DATABASE_URL is set."""
+        if self.database_url is not None:
+            return self
+        parts = (
+            self.database_host,
+            self.database_name,
+            self.database_user,
+            self.database_password,
+        )
+        if all(value is None for value in parts):
+            return self
+        if (
+            any(value is None for value in parts)
+            or not self.database_host
+            or not self.database_name
+            or not self.database_user
+            or self.database_password is None
+            or not self.database_password.get_secret_value()
+        ):
+            raise ValueError("Database connection components must all be provided")
+        self.database_url = URL.create(
+            DATABASE_DRIVER,
+            host=self.database_host,
+            port=self.database_port,
+            database=self.database_name,
+            username=self.database_user,
+            password=self.database_password.get_secret_value(),
+        ).render_as_string(hide_password=False)
+        return self
 
     @field_validator("database_url")
     @classmethod

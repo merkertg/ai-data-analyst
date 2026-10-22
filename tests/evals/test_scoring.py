@@ -9,7 +9,7 @@ from app.agents.contracts import AgentProgress, ToolTrace
 from app.agents.schemas import AnalysisReport, Evidence, Fact
 from app.evals.cases import EvalCase, Expectation, same_value
 from app.evals.oracle import Oracle
-from app.evals.runner import score
+from app.evals.runner import CaseResult, score, summarize
 
 SEP = (date(2026, 9, 1), date(2026, 10, 1))
 OCT = (date(2026, 10, 1), date(2026, 11, 1))
@@ -121,3 +121,80 @@ def test_numbers_compare_by_value() -> None:
     assert same_value("0", "0.00")
     assert not same_value("pumps", "Pumps")
     assert same_value("Central", "Central")
+
+
+def result(*, required: bool, completed: bool, tool_ok: bool = False) -> CaseResult:
+    """A scored result with explicit tool applicability, including failed runs."""
+    return CaseResult(
+        id="T01",
+        kind="metric" if required else "refusal",
+        language="ru",
+        question="Вопрос для проверки.",
+        passed=completed and (not required or tool_ok),
+        checks={"completed": True, "tools": tool_ok if required else True}
+        if completed
+        else {"completed": False},
+        expected=[],
+        tools_required=required,
+        tools_called=[],
+        facts=0,
+        error=None if completed else "timeout",
+        latency_ms=1,
+        total_tokens=None,
+    )
+
+
+def test_failed_tool_cases_are_misses_and_refusals_are_not_free_hits() -> None:
+    """A timeout cannot improve the rate by dropping out of its denominator."""
+    results = [
+        result(required=True, completed=False),
+        result(required=True, completed=True, tool_ok=True),
+        result(required=False, completed=True),
+    ]
+    assert summarize(results)["tool_selection_rate"] == 0.5
+
+
+def test_all_tool_cases_failing_yields_zero_not_a_refusal_hit() -> None:
+    """A completed refusal cannot conceal failure on every tool question."""
+    results = [
+        result(required=True, completed=False),
+        result(required=False, completed=True),
+    ]
+    assert summarize(results)["tool_selection_rate"] == 0.0
+
+
+def test_no_applicable_tool_cases_means_not_measured() -> None:
+    """An empty run or refusals alone have no tool-selection denominator."""
+    assert summarize([])["tool_selection_rate"] is None
+    assert (
+        summarize([result(required=False, completed=True)])["tool_selection_rate"]
+        is None
+    )
+
+
+def test_failed_expected_values_remain_in_value_accuracy_denominator() -> None:
+    """The value metric already counts unanswered expectations as misses."""
+    failed = result(required=True, completed=False)
+    failed.expected = [{"metric": "net_revenue", "values": ["123.00"]}]
+    complete = result(required=True, completed=True, tool_ok=True)
+    complete.expected = [{"metric": "net_revenue", "values": ["123.00"], "found": True}]
+    assert summarize([failed, complete])["value_accuracy"] == 0.5
+
+
+def test_sql_null_evidence_satisfies_an_undefined_oracle_metric(oracle: Oracle) -> None:
+    """Undefined percentages pass using the production tool's null spelling."""
+    undefined = case(
+        expect=[
+            Expectation(
+                metric="change_percent",
+                of="net_revenue",
+                period=SEP,
+                previous=(date(2026, 12, 1), date(2027, 1, 1)),
+            )
+        ]
+    )
+    checks, expected, _ = score(
+        undefined, answer("null"), progress("compare_periods"), None, oracle
+    )
+    assert all(checks.values())
+    assert expected[0]["values"] == ["null"]

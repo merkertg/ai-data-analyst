@@ -36,6 +36,10 @@ SMOKE_TOKEN="$(docker compose exec -T ui cat /run/ai-data-analyst/ui_token)" pyt
 
 Without `.env` the stand uses a local demo database password; set `POSTGRES_PASSWORD` in `.env` for anything beyond a local demo. To use OpenAI instead of the demo provider, set `LLM_PROVIDER=openai`, `OPENAI_API_KEY` and `OPENAI_MODEL` in `.env` and run `docker compose up --detach api`. See the [demo walkthrough](../DEMO.md) for what to show.
 
+Compose passes the database host, port, name, user and raw password separately to `migrate`, `bootstrap` and `api`. Settings uses SQLAlchemy `URL.create(...)`, so passwords containing `@`, `/`, `#` or `%` need no manual URL encoding in `POSTGRES_PASSWORD`. Quote the value in `.env` when it contains special characters. The interface receives neither these database components nor the OpenAI key. The host's `DATABASE_URL` from `.env` is not forwarded into the containers.
+
+Bootstrap keeps a valid analyst token. A viewer token is replaced with a new analyst token so the interface can also ask questions and save reports. Token writes use a unique `0600` temporary file and atomic replacement; failed writes leave no temporary credential copy. An existing valid analyst credential in a permissive file or behind a symlink is kept, while the file itself is replaced with a regular `0600` file without modifying the symlink's target.
+
 ## Requirements (host development)
 
 - [uv](https://docs.astral.sh/uv/getting-started/installation/) 0.12 or newer. The project and CI use uv 0.12.23.
@@ -78,6 +82,8 @@ cp .env.example .env
 ```
 
 `uv sync --locked` creates `.venv` with the exact versions from `uv.lock` and fails if the lock file does not match `pyproject.toml`. `.env` holds local settings, including the database password and `DATABASE_URL`; it is ignored by Git. Always run project commands through `uv run`: the system `python3` may be a different version.
+
+For host commands, keep `DATABASE_URL` aligned with the PostgreSQL credentials and published port. If its password contains reserved URL characters, percent-encode the password component; for example, `@` becomes `%40` and `/` becomes `%2F`. As an alternative, remove `DATABASE_URL` and set all connection components shown under [Local settings](#local-settings); their password is raw. See [Database](database.md#connection-settings) for details.
 
 ## Start PostgreSQL and apply migrations
 
@@ -184,7 +190,9 @@ Settings are read from environment variables, then from `.env`, then from defaul
 | Variable | Default | Purpose |
 | --- | --- | --- |
 | `APP_NAME` | `AI Data Analyst` | Service title in OpenAPI and on `/docs` |
-| `DATABASE_URL` | not set | PostgreSQL address for the API and Alembic; must start with `postgresql+psycopg://` |
+| `DATABASE_URL` | not set | Explicit PostgreSQL address for the API and Alembic; takes priority over connection components; must start with `postgresql+psycopg://` |
+| `DATABASE_HOST`, `DATABASE_NAME`, `DATABASE_USER`, `DATABASE_PASSWORD` | not set | Alternative when `DATABASE_URL` is absent: all four are required together; password is raw, stored as `SecretStr`, and escaped by `URL.create(...)` |
+| `DATABASE_PORT` | `5432` | Port for the component-based configuration; host development uses the published port, normally `5436` |
 | `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `POSTGRES_PORT` | see `.env.example` | Used by Docker Compose to create the `db` service |
 | `POSTGRES_TEST_PORT` | `5437` | Host port of the `db-test` service |
 | `LLM_PROVIDER` | `mock` | Demo planner; set `openai` for a real model |
@@ -192,7 +200,7 @@ Settings are read from environment variables, then from `.env`, then from defaul
 
 Agent time, step, tool and token limits are listed in [AI analyst](agent.md). Changing the provider does not change financial calculations: tools still use SQL and `Decimal`.
 
-Without `DATABASE_URL` the API still starts: `/health` works and `/ready` answers `503`.
+An explicit `DATABASE_URL` wins even if connection components are also supplied. If neither the URL nor connection components are configured, the API still starts: `/health` works and `/ready` answers `503`. A partially supplied component configuration is rejected; unset or remove `DATABASE_URL` rather than assigning an empty string to use the components.
 
 ## Open the interface (Stage 08)
 

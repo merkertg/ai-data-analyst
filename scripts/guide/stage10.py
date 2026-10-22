@@ -96,8 +96,8 @@ def add_stage10(story):
                 [
                     mono("ui"),
                     tr(
-                        "Streamlit; ни адреса базы, ни ключа модели.",
-                        "Streamlit; no database address, no model key.",
+                        "Streamlit; без настроек базы и ключа модели.",
+                        "Streamlit; no database settings or model key.",
                     ),
                 ],
             ],
@@ -117,16 +117,18 @@ def add_stage10(story):
         Spacer(1, 6),
         p(
             tr(
-                "Две стадии: uv и кеш сборки остаются в builder, в финальный образ "
-                "идут только .venv и код. --no-dev не ставит pytest, Ruff и mypy; "
-                "CI проверяет, что их нет. Базовые образы закреплены по digest. "
-                "Один образ на все сервисы: зависимости общие, сервисы отличаются "
-                "командой. Размер около 1 ГБ — scikit-learn, Pandas и Streamlit.",
-                "Two stages: uv and the build cache stay in the builder; the final "
-                "image gets only .venv and code. --no-dev skips pytest, Ruff and mypy; "
-                "CI checks they are absent. Base images are pinned by digest. One "
-                "image serves every service: dependencies are shared, only the "
-                "command differs. About 1 GB: scikit-learn, Pandas and Streamlit.",
+                "uv и кеш остаются в builder; runtime получает .venv и код без "
+                "dev-инструментов. Compose передаёт DATABASE_HOST, DATABASE_PORT, "
+                "DATABASE_NAME, DATABASE_USER и DATABASE_PASSWORD только migrate, "
+                "bootstrap и api. SQLAlchemy URL.create собирает адрес из компонентов: "
+                "символы @, /, # и % в пароле передаются как есть, без ручного "
+                "URL-кодирования. Интерфейс настроек базы не получает.",
+                "uv and the cache stay in the builder; runtime gets .venv and code "
+                "without dev tools. Compose passes DATABASE_HOST, DATABASE_PORT, "
+                "DATABASE_NAME, DATABASE_USER and DATABASE_PASSWORD only to migrate, "
+                "bootstrap and api. SQLAlchemy URL.create builds the connection URL "
+                "from components: password characters @, /, # and % stay raw, with "
+                "no manual URL encoding. The interface receives no database settings.",
             ),
             BODY_S,
         ),
@@ -162,8 +164,8 @@ def add_stage10(story):
                 [
                     tr("Токен", "Token"),
                     tr(
-                        "Работает — оставить; отозван или испорчен — выпустить новый, старые отозвать.",
-                        "Works — keep; revoked or broken — issue a new one, revoke the old.",
+                        "Оставить только действующий analyst; viewer, отозванный или испорченный — заменить.",
+                        "Keep only a valid analyst; replace a viewer, revoked or broken token.",
                     ),
                 ],
             ],
@@ -178,17 +180,19 @@ def add_stage10(story):
         p(tr("Интерфейс внутри Docker", "The interface inside Docker"), H2),
         p(
             tr(
-                "API — это контейнер api, а интерфейс этапа 08 принимал только "
-                "loopback. Теперь http://api:8000 разрешён, только если api есть "
-                "в UI_ALLOWED_API_HOSTS; туда можно записать лишь имя из одного "
-                "слова, не домен и не IP-адрес. Токен берётся из файла "
-                "UI_API_TOKEN_FILE в томе ui_token: права 0600, монтирование "
-                "только для чтения.",
-                "The API is the api container, and the Stage 08 interface accepted "
-                "loopback only. Now http://api:8000 is allowed only if api is in "
-                "UI_ALLOWED_API_HOSTS, which takes single-label names only, never a "
-                "domain or an IP address. The token comes from UI_API_TOKEN_FILE in "
-                "the ui_token volume: mode 0600, mounted read-only.",
+                "http://api:8000 разрешён через UI_ALLOWED_API_HOSTS: только имя "
+                "из одного слова, не домен или IP. UI_API_TOKEN_FILE указывает на "
+                "том ui_token, доступный UI только для чтения. mkstemp создаёт "
+                "уникальный файл с правами 0600; replace атомарно устанавливает "
+                "токен, finally удаляет временный файл и при ошибке. Небезопасный "
+                "файл действующего analyst переписывается с тем же токеном.",
+                "http://api:8000 is allowed through UI_ALLOWED_API_HOSTS: a "
+                "single-label name only, never a domain or IP. UI_API_TOKEN_FILE "
+                "points to the ui_token volume, mounted read-only for the UI. "
+                "mkstemp creates a unique mode-0600 file; replace installs the "
+                "token atomically, and finally removes the temporary file even "
+                "on failure. An unsafe valid analyst file is rewritten with "
+                "the same token.",
             ),
             BODY_S,
         ),
@@ -209,16 +213,14 @@ def add_stage10(story):
         Spacer(1, 7),
         callout(
             tr(
-                "<b>Проверено.</b> С нуля стенд healthy за 35 с; после down + up — "
-                "«already present» и «kept». Из чистого клона — 18 с и зелёный "
-                "smoke (первая попытка упала из-за занятого на машине порта). "
-                "В браузере панель загрузилась с токеном из файла: −26.18 %, "
-                "1 931 заказ. Evals внутри контейнера — 42 из 42.",
-                "<b>Checked.</b> From scratch the stand is healthy in 35 s; after down "
-                "+ up — “already present” and “kept”. From a clean clone — 18 s and a "
-                "green smoke test (the first try failed on a port busy on the "
-                "machine). In the browser the dashboard loaded with the file token: "
-                "−26.18%, 1,931 orders. Evals inside the container — 42 of 42.",
+                "<b>Текущая локальная проверка.</b> Отдельный тестовый стенд Compose "
+                "собран и healthy за 23.5 с с зарезервированными символами в пароле. "
+                "Smoke — 8/8 до и 8/8 после пересоздания; данные и токен сохранены. "
+                "Это проверка локального образа, а не подтверждение публикации.",
+                "<b>Current local check.</b> An isolated test Compose stand built "
+                "and became healthy in 23.5 s with reserved characters in its "
+                "password. Smoke: 8/8 before and 8/8 after re-creation; data and "
+                "the token persisted. This verifies a local image, not publication.",
             ),
             AMBER,
             AMBER_L,
@@ -243,15 +245,15 @@ def add_stage10(story):
                 [
                     "Lint, types and tests",
                     tr(
-                        "Ruff, mypy, миграции, 600 тестов; покрытие строк и ветвей ≥ 90 % (93.04 %).",
-                        "Ruff, mypy, migrations, 600 tests; line and branch coverage ≥ 90% (93.04%).",
+                        "Ruff: 197 файлов; mypy: 130. 690 тестов: 522 unit + 168 integration, 39.66 с; покрытие 94.12 %, порог 90 %.",
+                        "Ruff: 197 files; mypy: 130. 690 tests: 522 unit + 168 integration, 39.66 s; coverage 94.12%, threshold 90%.",
                     ),
                 ],
                 [
                     "Audit runtime dependencies",
                     tr(
-                        "pip-audit по uv.lock; находка вне списка или просроченное исключение — ошибка.",
-                        "pip-audit over uv.lock; an unlisted finding or expired exception fails.",
+                        "Старый JSON удаляется; нужен свежий корректный отчёт и согласованный exit. Ошибка или неверное исключение блокирует сборку.",
+                        "Old JSON is removed; a fresh valid report and matching exit status are required. An error or invalid exception blocks the build.",
                     ),
                 ],
                 [
@@ -294,12 +296,12 @@ def add_stage10(story):
             tr(
                 "<b>Права.</b> Запись в пакеты — только у задания публикации; "
                 "токен стенда в журнале маскируется; действия закреплены SHA, "
-                "образы — digest (это проверяют тесты). Новые задания и GHCR "
-                "проверятся на GitHub после push.",
+                "образы — digest (это проверяют тесты). Успешный запуск GitHub "
+                "Actions и публикация в GHCR сейчас не подтверждены.",
                 "<b>Permissions.</b> Only the publish job may write packages; the "
                 "stand token is masked in the log; actions are pinned by SHA and "
-                "images by digest (tests check it). The new jobs and GHCR will be "
-                "checked on GitHub after the push.",
+                "images by digest (tests check it). A successful GitHub Actions "
+                "run and publication to GHCR are currently unconfirmed.",
             ),
             BLUE,
             BLUE_L,

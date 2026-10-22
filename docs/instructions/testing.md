@@ -25,8 +25,8 @@ A successful run reports no Ruff or mypy issues and no failed tests. Exact test 
 
 | Group | Location | Needs a database |
 | --- | --- | --- |
-| Unit | `tests/*.py` | No |
-| Integration | `tests/integration/` (marker `integration`) | Yes, from `TEST_DATABASE_URL` |
+| Unit | `tests/*.py` and the non-integration cases in `tests/evals/`, `tests/security/` | No |
+| Integration | Any test marked `integration`: `tests/integration/` and cases using the database fixtures in `tests/evals/`, `tests/security/` | Yes, from `TEST_DATABASE_URL` |
 
 Integration tests drop and recreate the schema, so they only run against a database whose name ends with `_test`, and only from `TEST_DATABASE_URL` — never from `DATABASE_URL` or `.env`. Locally, without the variable they are skipped; on GitHub Actions (`CI=true`) a missing variable is a failure.
 
@@ -35,6 +35,10 @@ Fixtures: `migrated_engine` builds the schema once per run with `alembic downgra
 | File | Checks |
 | --- | --- |
 | `tests/test_health.py` | `/health`, `405` on `POST`, OpenAPI version and model |
+| `tests/test_database_components.py` | Raw password characters, complete database components, explicit URL priority and Compose configuration |
+| `tests/test_bootstrap_token_file.py` | Analyst-only token reuse, private atomic file replacement, stale temporary files and symlinks, failure cleanup |
+| `tests/test_audit_dependencies.py` | Fresh report required, malformed/missing JSON, operational failures, exit/report agreement and accepted finding policy |
+| `tests/integration/test_eval_dataset.py` | Every typed field of all six tables matches the verified CSV bundle; equal-count mutations and missing stock rows fail |
 | `tests/test_config.py` | Settings priority; `DATABASE_URL` driver and database validation; password hidden from errors and `repr` |
 | `tests/test_ready.py` | `/ready` answers `503` without a database or with an unreachable one; `/health` does not need a database |
 | `tests/test_session.py` | Lazy engine, `DatabaseNotConfigured`, disposing an unused pool |
@@ -126,7 +130,7 @@ No test calls a real model or needs an OpenAI key: the runtime is tested with a 
 uv run --locked pytest --cov
 ```
 
-Line and branch coverage of `app/` and `ui/` must stay at or above 90 % (`[tool.coverage.report] fail_under` in `pyproject.toml`); it was 93.04 % at Stage 10. The report lists only files that are not fully covered. CI writes `reports/coverage.xml` as an artifact.
+Line and branch coverage of `app/` and `ui/` must stay at or above 90 % (`[tool.coverage.report] fail_under` in `pyproject.toml`); it is 94.12 % in the stabilization run (93.04 % at initial Stage 10 completion). The report lists only files that are not fully covered. CI writes `reports/coverage.xml` as an artifact.
 
 ## Dependency audit
 

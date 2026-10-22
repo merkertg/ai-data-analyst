@@ -39,12 +39,27 @@ def load_exceptions(today: date) -> dict[tuple[str, str], dict[str, str]]:
     return accepted
 
 
-def findings(report: dict[str, object]) -> set[tuple[str, str]]:
-    """(package, vulnerability id) pairs from a pip-audit JSON report."""
-    found = set()
-    for dependency in report["dependencies"]:  # type: ignore[attr-defined]
-        for vulnerability in dependency.get("vulns", []):
-            found.add((dependency["name"].lower(), vulnerability["id"]))
+def findings(report: object) -> set[tuple[str, str]]:
+    """Validate report fields before extracting package and vulnerability pairs."""
+    if not isinstance(report, dict) or not isinstance(report.get("dependencies"), list):
+        raise ValueError("expected a dependencies list")
+    found: set[tuple[str, str]] = set()
+    for dependency in report["dependencies"]:
+        if not isinstance(dependency, dict):
+            raise ValueError("expected a dependency object")
+        name = dependency.get("name")
+        vulnerabilities = dependency.get("vulns")
+        if not isinstance(name, str) or not name.strip():
+            raise ValueError("expected a non-empty dependency name")
+        if not isinstance(vulnerabilities, list):
+            raise ValueError(f"{name}: expected a vulnerabilities list")
+        for vulnerability in vulnerabilities:
+            if not isinstance(vulnerability, dict):
+                raise ValueError(f"{name}: expected a vulnerability object")
+            identifier = vulnerability.get("id")
+            if not isinstance(identifier, str) or not identifier.strip():
+                raise ValueError(f"{name}: expected a non-empty vulnerability id")
+            found.add((name.lower(), identifier))
     return found
 
 
@@ -61,7 +76,9 @@ def main() -> int:
         stdout=subprocess.DEVNULL,
     )  # fmt: skip
     output = REPORTS / "pip-audit.json"
-    # Exit code 1 only means "vulnerabilities found"; they are judged below.
+    # A failed invocation must never reuse an earlier successful report.
+    output.unlink(missing_ok=True)
+    # Exit code 1 may also mean an operational failure, so require fresh findings.
     audit = subprocess.run(
         [
             "uv", "tool", "run", "--python", "3.12", "--from", PIP_AUDIT,
@@ -74,9 +91,16 @@ def main() -> int:
     if audit.returncode not in {0, 1} or not output.exists():
         print("pip-audit did not produce a report", file=sys.stderr)
         return 2
+    try:
+        found = findings(json.loads(output.read_text(encoding="utf-8")))
+    except (OSError, UnicodeError, ValueError) as error:
+        print(f"pip-audit produced an invalid report: {error}", file=sys.stderr)
+        return 2
+    if bool(found) != (audit.returncode == 1):
+        print("pip-audit exit status does not match its findings", file=sys.stderr)
+        return 2
     today = date.today()
     accepted = load_exceptions(today)
-    found = findings(json.loads(output.read_text(encoding="utf-8")))
     problems = [
         f"not accepted: {package} {vid}"
         for package, vid in sorted(found - set(accepted))

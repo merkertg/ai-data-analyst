@@ -37,6 +37,7 @@ class CaseResult:
     passed: bool
     checks: dict[str, bool]
     expected: list[dict[str, Any]]
+    tools_required: bool
     tools_called: list[str]
     facts: int
     error: str | None
@@ -141,6 +142,7 @@ def run_case(
         passed=all(checks.values()),
         checks=checks,
         expected=expected,
+        tools_required=bool(case.tools_any),
         tools_called=[item.name for item in progress.tool_trace],
         facts=0 if report is None else len(report.facts),
         error=error,
@@ -164,7 +166,9 @@ def summarize(results: list[CaseResult]) -> dict[str, Any]:
         bucket["total"] += 1
         bucket["passed"] += result.passed
     expectations = [item for result in results for item in result.expected]
-    tool_cases = [r for r in results if "tools" in r.checks]
+    # Questions without a required tool cannot earn free hits, and a failed
+    # run remains a miss instead of disappearing from the denominator.
+    tool_cases = [r for r in results if r.tools_required]
     refusal = [r for r in results if r.kind == "refusal"]
     latencies = sorted(result.latency_ms for result in results)
     tokens = [r.total_tokens for r in results if r.total_tokens is not None]
@@ -176,7 +180,7 @@ def summarize(results: list[CaseResult]) -> dict[str, Any]:
             sum(result.checks["completed"] for result in results), len(results)
         ),
         "tool_selection_rate": _rate(
-            sum(r.checks["tools"] for r in tool_cases), len(tool_cases)
+            sum(r.checks.get("tools", False) for r in tool_cases), len(tool_cases)
         ),
         "value_accuracy": _rate(
             sum(bool(item.get("found")) for item in expectations), len(expectations)

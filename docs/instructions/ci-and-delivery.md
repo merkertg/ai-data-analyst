@@ -22,11 +22,24 @@ push / pull request / tag v1.2.3
 | Job | Main commands | Fails when |
 | --- | --- | --- |
 | Lint, types and tests | `uv sync --locked`, `ruff check`, `ruff format --check`, `mypy app ui tests migrations`, `alembic upgrade/check/downgrade/upgrade`, `pytest --cov` | Style, types, a migration, any test, or line+branch coverage of `app/` and `ui/` below 90 % |
-| Audit runtime dependencies | `python scripts/audit_dependencies.py` | A known vulnerability is not in `scripts/audit-exceptions.json`, an exception expired, or an exception no longer matches a finding |
+| Audit runtime dependencies | `python scripts/audit_dependencies.py` | A fresh valid report is missing, the report disagrees with the exit status, an operational error occurs, a known vulnerability is not in `scripts/audit-exceptions.json`, an exception expired, or an exception no longer matches a finding |
 | Build and smoke test Docker | `docker build`, runtime check, `docker compose up --no-build --wait`, `python3 scripts/smoke_stack.py`, `docker compose down`, `up` again | The image runs as root or contains pytest, Ruff, mypy or uv; a service is not healthy; a smoke check fails; data or the token did not survive re-creation |
 | Publish tested image to GHCR | `docker load`, `docker tag`, `docker push` | The tag is not `vX.Y.Z` or not on `main`; the registry rejects the push |
 
 The smoke check calls `/health` and `/ready` (revision `0004`), expects 401 without a token, compares the September revenue with the seed 42 values (`466678757.35`, change `-165497371.86`, `-26.18`%), asks the agent and finds the cited value in its evidence, finds the run in history and checks the Streamlit health endpoint.
+
+The dependency audit deletes the previous `reports/pip-audit.json` immediately
+before invoking pip-audit. It requires a newly written JSON report with valid
+dependency and vulnerability fields, and an exit status consistent with its
+findings. Missing or malformed output and operational failures fail the job;
+an earlier successful report cannot make a failed audit pass. An exit status
+indicating vulnerabilities together with a clean report also fails.
+
+Check this behavior without network access or an actual audit subprocess:
+
+```bash
+uv run pytest -q tests/test_audit_dependencies.py
+```
 
 ## Security settings
 

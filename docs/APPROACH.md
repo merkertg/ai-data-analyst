@@ -46,9 +46,11 @@ Settings: environment variables → .env → defaults in app/config.py
 LLM settings: the same sources → app/llm/config.py, read only when the agent runs
 ```
 
-`GET /health` reports that the process is up and answering HTTP; it never touches the database. Its return annotation, `HealthResponse`, is both the documented schema and a runtime check. `GET /ready` opens a connection, reads `alembic_version` and compares it with the latest migration shipped with the code. A missing `DATABASE_URL`, an unreachable server, an empty or outdated schema all return the same `503` without revealing the address. The application version lives in `app/__init__.py`, and a test keeps it equal to `version` in `pyproject.toml`.
+`GET /health` reports that the process is up and answering HTTP; it never touches the database. Its return annotation, `HealthResponse`, is both the documented schema and a runtime check. `GET /ready` opens a connection, reads `alembic_version` and compares it with the latest migration shipped with the code. Missing database configuration, an unreachable server, an empty or outdated schema all return the same `503` without revealing the address. The application version lives in `app/__init__.py`, and a test keeps it equal to `version` in `pyproject.toml`.
 
 `app/config.py` defines `Settings` on top of pydantic-settings and exposes it through a cached `get_settings()`. A value is taken from the process environment, then from `.env`, then from the default. `DATABASE_URL` must use the `postgresql+psycopg` driver and name a database; it is hidden from `repr` and validation errors because it contains a password.
+
+An explicit `DATABASE_URL` takes priority over connection components. When it is absent, `DATABASE_HOST`, `DATABASE_NAME`, `DATABASE_USER` and `DATABASE_PASSWORD` must be supplied together; `DATABASE_PORT` defaults to `5432`. The password is a `SecretStr`; SQLAlchemy `URL.create(...)` constructs the URL from its raw value, preserving `@`, `/`, `#` and `%` without manual encoding. Hand-written URLs still require encoded username/password components. Compose supplies these components only to `migrate`, `bootstrap` and `api`, using `db:5432` and the `POSTGRES_*` values; it does not forward the host's `.env` `DATABASE_URL`. The UI receives neither form of database configuration. Partial component settings are rejected; no URL and no components leave the database unconfigured.
 
 `app/db/session.py` creates the engine lazily, checks pooled connections before reuse (`pool_pre_ping`) and limits connection attempts to three seconds. Sessions roll back on errors; code that writes data commits explicitly.
 
@@ -213,6 +215,8 @@ Every `/api` route requires `Authorization: Bearer <token>`. Tokens are `ida_` p
 ## Delivery
 
 `docker compose up --build` builds one two-stage image (locked runtime dependencies, no uv or development tools, UID 10001) and starts `db`, `migrate`, `bootstrap`, `api` and `ui`, all bound to `127.0.0.1`. The bootstrap step requires the latest migration, loads the seed 42 bundle only into an empty database and keeps one valid analyst token for the interface in a `0600` file on its own volume. The interface reaches the API by the service name `api`, which it accepts only from an explicit allow-list of single-label names, and has no database address or model key. CI gates coverage at 90 %, audits the locked runtime dependencies with explained exceptions that expire within 30 days, smoke-tests the stand before and after re-creation and publishes the tested image to GHCR (`:main`, `:sha-…`, `:vX.Y.Z`). Details: [STAGE_10.md](STAGE_10.md), [RELEASES.md](RELEASES.md), [DEPENDENCY_UPDATES.md](DEPENDENCY_UPDATES.md).
+
+The 2026-10-22 stabilisation makes bootstrap require analyst permissions before keeping an existing token; a viewer token triggers replacement. Token files are written through unique same-directory `mkstemp` files (`0600`), atomically replaced and cleaned up on write or replace failure. Stale fixed `.tmp` paths are never reused. A valid analyst credential in a permissive file or behind a symlink is retained while its file is replaced with a regular private file; the symlink target is not modified. A regular `0600` analyst file is left untouched.
 
 ## Future work
 

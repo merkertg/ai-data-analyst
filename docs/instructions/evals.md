@@ -15,7 +15,7 @@ uv run alembic upgrade head
 uv run python -m app.data.load --input data/demo
 ```
 
-The eval command compares row counts with the CSV files and stops if they differ.
+The eval command verifies `manifest.json`, all six file hashes, CSV headers and declared row counts before SQL. It then compares every typed field in all six domain tables, including inventory, in one read-only snapshot, ordered by primary key and streamed in batches of 1,000. Different values fail even if row counts match. Equivalent Decimal scales or timestamp offsets are accepted. Keep the bundle and database unchanged for the whole run: later tool calls use separate snapshots.
 
 ## Run
 
@@ -34,7 +34,11 @@ uv run python -m app.evals --bundle data/demo --provider mock --output mock.json
 
 ## Read the report
 
-The terminal shows one line per case with failure notes, then a summary: `pass_rate`, `value_accuracy` (expected values cited), `tool_selection_rate`, `refusal_rate`, `completed_rate`, results by kind, median and maximum latency, and total tokens for a real model. Each case in the JSON lists its checks, expected values, called tools, the summary and the error code of a failed run.
+The terminal shows one line per case with failure notes, then a summary: `pass_rate`, `value_accuracy` (expected values cited, with failed runs counted as misses), `tool_selection_rate`, `refusal_rate`, `completed_rate`, results by kind, median and maximum latency, and total tokens for a real model. Each case in the JSON lists its checks, expected values, `tools_required`, called tools, the summary and the error code of a failed run.
+
+Tool selection counts only cases with non-empty `tools_any` (38 in the full set). A failed run counts as a miss, while questions requiring no tool are excluded; an empty denominator yields `null`. On the recorded Stage 09 checks this gives reference 38 / 38 and mock 34 / 38 (0.8947), without changing the recorded question pass sets.
+
+Undefined values are cited as `"null"`, matching JSON tool evidence: AOV with no paid orders, a change with an undefined AOV operand, and percentages or contribution shares with a zero denominator. Zero revenue, zero orders and refund-only negative revenue remain numeric when mathematically defined.
 
 ## Add a question
 

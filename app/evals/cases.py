@@ -157,10 +157,14 @@ def expected_values(expectation: Expectation, oracle: Oracle) -> set[str]:
         of = expectation.of or "net_revenue"
         current_value = _metric_number(oracle, of, period)
         previous_value = _metric_number(oracle, of, previous)
+        # AOV is undefined without paid orders; neither kind of change can
+        # manufacture a value when either operand is missing.
+        if current_value is None or previous_value is None:
+            return {"null"}
         if metric == "change_absolute":
             change = current_value - previous_value
             return {str(change if of == "paid_orders" else money(change))}
-        return {str(percent(current_value - previous_value, previous_value))}
+        return {_nullable_text(percent(current_value - previous_value, previous_value))}
     if metric in {"group_delta", "group_share", "largest_decline"}:
         previous = _period(expectation.previous)
         column = expectation.dimension or "category"
@@ -170,7 +174,7 @@ def expected_values(expectation: Expectation, oracle: Oracle) -> set[str]:
         delta = deltas[expectation.name or ""]
         if metric == "group_delta":
             return {str(money(delta))}
-        return {str(share(delta, sum(deltas.values())))}
+        return {_nullable_text(share(delta, sum(deltas.values())))}
     if metric in {"refund_rate", "category_refunds", "refund_count"}:
         amount, count = oracle.refunds_of(expectation.name or "", period)
         if metric == "category_refunds":
@@ -178,7 +182,7 @@ def expected_values(expectation: Expectation, oracle: Oracle) -> set[str]:
         if metric == "refund_count":
             return {str(count)}
         sales = oracle.totals(period, "category", expectation.name).sales
-        return {str(percent(amount, sales))}
+        return {_nullable_text(percent(amount, sales))}
     if metric == "most_refunded_category":
         names = set(oracle.refunds["category"])
         return {max(sorted(names), key=lambda name: oracle.refunds_of(name, period)[0])}
@@ -197,12 +201,14 @@ def expected_values(expectation: Expectation, oracle: Oracle) -> set[str]:
     return {str(oracle.max_line_quantity(expectation.name or "", period))}
 
 
-def _metric_number(oracle: Oracle, metric: str, period: Period) -> int:
-    """A metric as an integer: kopecks for money, a count for orders."""
+def _metric_number(oracle: Oracle, metric: str, period: Period) -> int | None:
+    """Integer kopecks/count, or an undefined AOV when there are no paid orders."""
     totals = oracle.totals(period)
     if metric == "paid_orders":
         return totals.orders
     if metric == "average_order_value":
+        if totals.orders == 0:
+            return None
         # Half-up rounding of sales / orders to whole kopecks.
         return (2 * totals.sales + totals.orders) // (2 * totals.orders)
     return {"paid_sales": totals.sales, "refunds": totals.refunds}.get(
@@ -213,7 +219,14 @@ def _metric_number(oracle: Oracle, metric: str, period: Period) -> int:
 def _metric_text(oracle: Oracle, metric: str, period: Period) -> str:
     """The metric as the API writes it."""
     number = _metric_number(oracle, metric, period)
+    if number is None:
+        return "null"
     return str(number) if metric == "paid_orders" else str(money(number))
+
+
+def _nullable_text(value: Decimal | int | None) -> str:
+    """Use the same null spelling as JSON tool results and evidence pointers."""
+    return "null" if value is None else str(value)
 
 
 def same_value(cited: str, expected: str) -> bool:

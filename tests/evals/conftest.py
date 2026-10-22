@@ -6,6 +6,8 @@ rounding to kopecks and that unpaid orders and their refunds never count.
 """
 
 import csv
+import hashlib
+import json
 from datetime import date
 from pathlib import Path
 
@@ -76,3 +78,23 @@ def write_bundle(directory: Path) -> Path:
 def oracle(tmp_path_factory: pytest.TempPathFactory) -> Oracle:
     """The oracle reading the hand-made bundle."""
     return Oracle(write_bundle(tmp_path_factory.mktemp("bundle")))
+
+
+@pytest.fixture
+def verified_bundle(tmp_path: Path) -> Path:
+    """The handwritten rows with the same manifest contract as a real export."""
+    directory = write_bundle(tmp_path)
+    manifest = {
+        "schema_version": 1,
+        "files": {
+            f"{name}.csv": {
+                "rows": len(rows) - 1,
+                "sha256": hashlib.sha256(
+                    (directory / f"{name}.csv").read_bytes()
+                ).hexdigest(),
+            }
+            for name, rows in TABLES.items()
+        },
+    }
+    (directory / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+    return directory

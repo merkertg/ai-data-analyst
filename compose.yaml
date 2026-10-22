@@ -15,7 +15,12 @@ x-application: &application
   build:
     context: .
   environment: &database-environment
-    DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-analyst}:${POSTGRES_PASSWORD:-local-development-only}@db:5432/${POSTGRES_DB:-industrialflow}
+    # Settings constructs the URL; raw passwords may contain @, /, # or %.
+    DATABASE_HOST: db
+    DATABASE_PORT: 5432
+    DATABASE_NAME: ${POSTGRES_DB:-industrialflow}
+    DATABASE_USER: ${POSTGRES_USER:-analyst}
+    DATABASE_PASSWORD: ${POSTGRES_PASSWORD:-local-development-only}
     DATABASE_STATEMENT_TIMEOUT_MS: ${DATABASE_STATEMENT_TIMEOUT_MS:-15000}
 
 services:

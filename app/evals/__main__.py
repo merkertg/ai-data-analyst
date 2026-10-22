@@ -4,8 +4,8 @@
     uv run python -m app.evals --bundle data/demo --provider mock --output mock.json
     uv run python -m app.evals --bundle data/demo --provider openai --output gpt.json
 
-The database must contain exactly the bundle that the oracle reads: row
-counts are compared before any question is asked. Runs are scored in memory
+The database must contain exactly the verified bundle that the oracle reads:
+all six tables are compared before any question is asked. Runs are scored in memory
 and never stored in agent_runs. The openai provider sends every question,
 tool result and report to the API and costs money.
 """
@@ -18,12 +18,15 @@ from functools import partial
 from pathlib import Path
 
 from pydantic import ValidationError
-from sqlalchemy import text
+from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.agents.mock import MockProvider
 from app.agents.tools import ToolExecutor
 from app.api.dependencies import LazySession
+from app.data.generate import FIELDS
+from app.data.load import _read_export
+from app.db.base import Base
 from app.db.session import DatabaseNotConfigured
 from app.evals.cases import CASES_FILE, EvalCase, load_cases
 from app.evals.oracle import Oracle
@@ -33,21 +36,37 @@ from app.llm.config import get_llm_settings
 from app.llm.errors import LLMError
 from app.llm.openai_provider import OpenAIProvider
 
-TABLES = ("customers", "products", "orders", "order_items", "refunds")
-
 
 def check_database_matches(bundle: Path) -> None:
-    """Refuse to score answers from a database loaded with other data."""
+    """Compare every typed value of all six verified CSV files with one snapshot.
+
+    The loader is reused only to validate and parse the export, never to compute
+    expected metrics. Native Decimal, date and aware datetime equality accepts
+    equivalent scales and time zones. SQL rows stream in bounded batches, while
+    primary-key ordering makes CSV row order irrelevant.
+    """
+    tables = _read_export(bundle)
     with LazySession(read_only=True) as session:
-        for table in TABLES:
-            in_database = session.scalar(text(f"SELECT COUNT(*) FROM {table}"))
-            with (bundle / f"{table}.csv").open(encoding="utf-8") as stream:
-                in_bundle = sum(1 for _ in stream) - 1
-            if in_database != in_bundle:
-                raise ValueError(
-                    f"{table}: {in_database} rows in the database, "
-                    f"{in_bundle} in the bundle"
-                )
+        for name, fields in FIELDS.items():
+            expected = sorted(tables[name], key=lambda row: int(str(row["id"])))
+            table = Base.metadata.tables[name]
+            query = (
+                select(*(table.c[field] for field in fields))
+                .order_by(table.c.id)
+                .execution_options(yield_per=1000)
+            )
+            count = 0
+            with session.execute(query) as result:
+                for actual in result.mappings():
+                    if count >= len(expected) or any(
+                        actual[field] != expected[count][field] for field in fields
+                    ):
+                        raise ValueError(
+                            f"{name}: database content differs from bundle"
+                        )
+                    count += 1
+            if count != len(expected):
+                raise ValueError(f"{name}: database content differs from bundle")
 
 
 def provider_factory(name: str) -> ProviderForCase:
@@ -90,15 +109,15 @@ def main(argv: Sequence[str] | None = None) -> int:
         cases: list[EvalCase] = load_cases(args.cases)
         if args.only:
             cases = [case for case in cases if case.id in set(args.only)]
-        oracle = Oracle(args.bundle)
         check_database_matches(args.bundle)
+        oracle = Oracle(args.bundle)
         settings = get_llm_settings()
         tools = ToolExecutor(partial(LazySession, read_only=True))
         report = run_all(
             cases, provider_factory(args.provider), tools, settings, oracle
         )
         report["provider"] = args.provider
-    except (ValueError, ValidationError, OSError) as error:
+    except (ValueError, ValidationError, OSError, ArithmeticError) as error:
         print(f"Eval setup failed: {error}", file=sys.stderr)
         return 2
     except (DatabaseNotConfigured, SQLAlchemyError, LLMError):

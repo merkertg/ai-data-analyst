@@ -15,6 +15,28 @@ Start PostgreSQL, apply migrations, load the sample data, run SQL by hand, and c
 
 Credentials and ports come from `.env` (copy `.env.example`). The development password is for local use only.
 
+## Connection settings
+
+The API, data commands and Alembic use the same application settings:
+
+- An explicit `DATABASE_URL` takes priority over separate components. It must use `postgresql+psycopg://` and name a database. When writing the URL by hand for host development, percent-encode reserved characters in the username and password; encode `@`, `/`, `#` and `%` as `%40`, `%2F`, `%23` and `%25` in the password component.
+- If `DATABASE_URL` is absent, supply `DATABASE_HOST`, `DATABASE_NAME`, `DATABASE_USER` and `DATABASE_PASSWORD` together. `DATABASE_PORT` defaults to `5432`. Settings builds the URL with SQLAlchemy `URL.create(...)`; pass the password as its original value, without manual encoding. Remove or comment out the URL to choose this mode; an empty URL is invalid.
+- With neither form configured, `/health` still works and `/ready` returns `503`. An incomplete set of components is a configuration error.
+
+Inside Compose, `migrate`, `bootstrap` and `api` receive `DATABASE_HOST=db`, `DATABASE_PORT=5432`, and the name, user and raw password from `POSTGRES_DB`, `POSTGRES_USER` and `POSTGRES_PASSWORD`. A password containing `@`, `/`, `#` or `%` is preserved by `URL.create(...)`. Quote special values in `.env`, and do not pre-encode `POSTGRES_PASSWORD`: PostgreSQL itself needs the original password. Compose does not forward the host's `DATABASE_URL` into these services. The UI receives no database URL or connection components.
+
+On the host, `.env.example` instead points `DATABASE_URL` at `127.0.0.1:5436`. If you change the PostgreSQL credentials or published port, update that URL too. To use separate components on the host, comment out `DATABASE_URL` and configure:
+
+```dotenv
+DATABASE_HOST=127.0.0.1
+DATABASE_PORT=5436
+DATABASE_NAME=industrialflow
+DATABASE_USER=analyst
+DATABASE_PASSWORD='local-development-only'
+```
+
+The password above is the existing local demo value. Keep real credentials only in the ignored `.env` or process environment. Changing `POSTGRES_PASSWORD` does not reset the password of an already initialised PostgreSQL volume; existing database credentials must stay aligned with the application configuration.
+
 ## Start and migrate
 
 ```bash
@@ -22,7 +44,7 @@ docker compose up --detach --wait db
 uv run alembic upgrade head
 ```
 
-`--wait` returns when the healthcheck (`pg_isready`) passes. The current migration chain creates six domain tables, `reports`, `agent_runs` and `alembic_version`. Verify:
+`--wait` returns when the healthcheck (`pg_isready`) passes. The current migration chain creates six domain tables, `reports`, `agent_runs`, `api_tokens` and `alembic_version`. Verify:
 
 ```bash
 uv run alembic current

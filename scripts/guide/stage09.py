@@ -283,13 +283,15 @@ def add_stage09(story):
                 "Вопросы: 8 показателей, 6 сравнений, 8 вкладов групп, 5 о возвратах, "
                 "4 о товарах, 4 об остатках, 3 без данных, 3 запрещённых и 1 "
                 "инъекция; 27 на русском, 15 на английском. В файле нет ожидаемых "
-                "чисел: эталон заново реализует правила показателей, не обращаясь "
-                "к PostgreSQL и к аналитическому ядру.",
+                "чисел: эталон считает независимо от SQL. Без заказов средний чек "
+                "и его изменение — null; процент при нулевой базе — тоже null, "
+                "а не ноль или строка None.",
                 "Questions: 8 metrics, 6 comparisons, 8 group contributions, "
                 "5 refunds, 4 products, 4 stock, 3 without data, 3 forbidden and "
                 "1 injection; 27 in Russian, 15 in English. The file holds no "
-                "expected numbers: the oracle re-implements the metric rules without "
-                "PostgreSQL or the analytics core.",
+                "expected numbers: the oracle computes independently of SQL. "
+                "Without paid orders, AOV and its change are null; a percentage "
+                "with a zero base is null, never zero or the string None.",
             ),
             BODY_S,
         ),
@@ -327,29 +329,32 @@ def add_stage09(story):
         Spacer(1, 6),
         p(
             tr(
-                "Эталонный прогон доказывает главное: на 42 вопросах SQL-инструменты "
-                "и независимый расчёт Pandas совпали до копейки. Mock — нижняя "
-                "граница: он не отказывается и не вызывает get_top_products. "
-                "Настоящую модель мерит та же команда с --provider openai.",
-                "The reference run proves the main point: on 42 questions the SQL "
-                "tools and an independent Pandas calculation agree to the kopeck. "
-                "The mock is a floor: it never refuses and never calls "
-                "get_top_products. The same command with --provider openai measures "
-                "a real model.",
+                "На 42 вопросах SQL и независимый Pandas совпали до копейки. "
+                "Выбор инструментов: только 38 вопросов с tools_any; 4 без "
+                "инструмента исключены, неудачный запуск — промах. Reference: "
+                "38/38, mock: 34/38 = 0.8947; пройдено по-прежнему 42/42 и 17/42. "
+                "Нет подходящих вопросов — метрика null. Модель мерит --provider openai.",
+                "SQL and independent Pandas agree to the kopeck on 42 questions. "
+                "Tool selection covers only 38 cases with tools_any; 4 requiring "
+                "no tool are excluded and failed runs are misses. Reference: "
+                "38/38, mock: 34/38 = 0.8947; passes remain 42/42 and 17/42. "
+                "No applicable cases means a null rate. --provider openai measures a model.",
             ),
             BODY_S,
         ),
         Spacer(1, 7),
         callout(
             tr(
-                "<b>Eval нашёл ошибку этапа 07.</b> «Which category drove the revenue "
-                "<b>dec</b>line in September?» — mock проанализировал декабрь: "
-                "сокращения месяцев искались как начало слова (и «market» стал бы "
-                "мартом). Теперь — только целые слова; добавлены регрессионные тесты.",
-                "<b>An eval found a Stage 07 bug.</b> “Which category drove the revenue "
-                "<b>dec</b>line in September?” made the mock analyse December: month "
-                "abbreviations matched word prefixes (“market” would be March). Now "
-                "only whole words count; regression tests were added.",
+                "<b>До вопросов:</b> manifest, хэши и CSV проверены; каждое поле "
+                "всех 6 таблиц, включая остатки, сверено по id в одном READ ONLY "
+                "снимке, SQL читается порциями по 1000 строк. Decimal и время "
+                "сравниваются по значению. Одних чисел строк недостаточно. "
+                "Не меняй набор во время eval: инструменты открывают свои снимки.",
+                "<b>Before questions:</b> verify the manifest, hashes and CSVs; "
+                "compare every field of all 6 tables, including stock, by id in "
+                "one READ ONLY snapshot, streaming SQL in batches of 1000. "
+                "Decimal and timestamp values must match. Counts alone are "
+                "insufficient. Keep data unchanged: tools use separate snapshots.",
             ),
             AMBER,
             AMBER_L,
@@ -357,14 +362,14 @@ def add_stage09(story):
         Spacer(1, 6),
         callout(
             tr(
-                "Проверки: 578 тестов, из них 55 безопасности и 27 evals; оба прогона "
-                f"evals — в CI на наборе seed 42. Результаты: раздел {RESULTS}, "
-                "docs/EVALUATION.md и docs/SECURITY.md. Дальше — Docker и "
-                "публикация, этап 10.",
-                "Checks: 578 tests, including 55 security and 27 eval tests; both "
-                f"eval runs execute in CI on the seed 42 bundle. Results: section "
-                f"{RESULTS}, docs/EVALUATION.md and docs/SECURITY.md. Next is "
-                "Docker and release in Stage 10.",
+                "При завершении этапа 09: 578 тестов, из них 55 безопасности и "
+                "27 evals; оба провайдера включены в CI на seed 42. Текущие "
+                f"проверки: раздел {RESULTS}; методика — docs/EVALUATION.md, "
+                "защита — docs/SECURITY.md.",
+                "At Stage 09 completion: 578 tests, including 55 security and "
+                "27 eval tests; both providers are included in CI on seed 42. "
+                f"Current checks: section {RESULTS}; method: docs/EVALUATION.md; "
+                "security: docs/SECURITY.md.",
             ),
             GREEN,
             GREEN_L,

@@ -93,8 +93,8 @@ def cover_page(c, doc):
         left,
         PAGE_H - 180,
         tr(
-            f"Этапы 01–{STAGES_DONE:02d} · от данных к опубликованному образу",
-            f"Stages 01–{STAGES_DONE:02d} · from data to a published image",
+            f"Этапы 01–{STAGES_DONE:02d} · от данных к стенду в Docker",
+            f"Stages 01–{STAGES_DONE:02d} · from data to a Docker stand",
         ),
     )
     c.setFont("PT", 14)

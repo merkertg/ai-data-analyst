@@ -15,6 +15,7 @@ Docker Compose runs this once after the migrations and before the interface.
 import argparse
 import json
 import os
+import stat
 import sys
 import tempfile
 from collections.abc import Sequence
@@ -50,17 +51,45 @@ def ensure_demo_data(session: Session) -> dict[str, int] | None:
         return load_dataset(session, bundle)
 
 
+def _write_token_file(path: Path, token: str) -> None:
+    """Atomically install a private token file without following stale links.
+
+    mkstemp creates a new 0600 file exclusively, even when an older fixed
+    `.tmp` name exists. Replacing the destination swaps its directory entry;
+    it cannot truncate the target of a destination symlink.
+    """
+    path.parent.mkdir(parents=True, exist_ok=True)
+    descriptor, filename = tempfile.mkstemp(
+        dir=path.parent, prefix=f".{path.name}.", suffix=".tmp", text=True
+    )
+    temporary = Path(filename)
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
+            stream.write(token + "\n")
+        temporary.replace(path)
+    finally:
+        # A failed write or replace must not leave a second copy of the token.
+        temporary.unlink(missing_ok=True)
+
+
 def ensure_ui_token(session: Session, path: Path) -> str:
-    """Keep the file's token if it still works, otherwise issue a new one.
+    """Keep a working analyst token, otherwise issue a new one.
 
     Returns "kept" or "issued". Earlier demo tokens are revoked when a new one
-    is issued, so at most one interface token stays active.
+    is issued, so at most one interface token stays active. Existing analyst
+    credentials survive a repair of a permissive file or a destination link.
     """
     try:
         current = path.read_text(encoding="utf-8").strip()
     except OSError:
         current = ""
-    if current and authenticate(session, current) is not None:
+    principal = authenticate(session, current) if current else None
+    if principal is not None and principal.allows(Role.ANALYST):
+        mode = path.lstat().st_mode
+        if not stat.S_ISREG(mode) or stat.S_IMODE(mode) != 0o600:
+            # Replace the file instead of chmod: chmod could follow a link and
+            # alter another file's permissions. The credential itself is kept.
+            _write_token_file(path, current)
         return "kept"
     for row in session.scalars(
         select(ApiToken).where(
@@ -69,13 +98,7 @@ def ensure_ui_token(session: Session, path: Path) -> str:
     ):
         revoke_token(session, row.id)
     _, token = issue_token(session, UI_TOKEN_NAME, Role.ANALYST)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    # Write a new file readable only by its owner, then swap it in atomically.
-    temporary = path.with_name(path.name + ".tmp")
-    descriptor = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-    with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
-        stream.write(token + "\n")
-    temporary.replace(path)
+    _write_token_file(path, token)
     return "issued"
 
 

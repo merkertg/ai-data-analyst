@@ -1,6 +1,6 @@
 {
   "checked_at": "2026-10-22",
-  "base_commit": "728e8f4 + worktree",
+  "base_commit": "363263a + stabilization worktree",
   "stage": 10,
   "environment": {
     "os": {
@@ -13,13 +13,13 @@
     "postgres": "17"
   },
   "tests": {
-    "total": 600,
-    "unit": 440,
-    "integration": 160,
-    "passed": 600,
+    "total": 690,
+    "unit": 522,
+    "integration": 168,
+    "passed": 690,
     "failed": 0,
     "skipped": 0,
-    "seconds": 35.1
+    "seconds": 39.66
   },
   "checks": [
     {
@@ -29,8 +29,8 @@
       },
       "command": "CI=true pytest --cov",
       "result": {
-        "ru": "600 passed; покрытие 93.04 % (порог 90)",
-        "en": "600 passed; coverage 93.04% (gate 90)"
+        "ru": "690 passed; покрытие 94.12 % (порог 90)",
+        "en": "690 passed; coverage 94.12% (gate 90)"
       },
       "status": "pass"
     },
@@ -39,10 +39,10 @@
         "ru": "Линтер / формат",
         "en": "Lint / format"
       },
-      "command": "ruff check . && ruff format --check .",
+      "command": "ruff check . / ruff format --check .",
       "result": {
-        "ru": "184 файла, включая Markdown",
-        "en": "184 files, Markdown included"
+        "ru": "197 файлов, включая Markdown",
+        "en": "197 files, Markdown included"
       },
       "status": "pass"
     },
@@ -53,8 +53,20 @@
       },
       "command": "mypy app ui tests migrations",
       "result": {
-        "ru": "Нет ошибок в 125 файлах",
-        "en": "No issues in 125 files"
+        "ru": "Нет ошибок в 130 файлах",
+        "en": "No issues in 130 files"
+      },
+      "status": "pass"
+    },
+    {
+      "name": {
+        "ru": "Lock",
+        "en": "Lock"
+      },
+      "command": "uv lock --check",
+      "result": {
+        "ru": "81 пакет; версии не менялись",
+        "en": "81 packages; versions unchanged"
       },
       "status": "pass"
     },
@@ -63,7 +75,7 @@
         "ru": "Миграции",
         "en": "Migrations"
       },
-      "command": "alembic upgrade / check / downgrade",
+      "command": "pytest migrations / alembic check",
       "result": {
         "ru": "Схема 0004; расхождений нет",
         "en": "Schema 0004; no drift"
@@ -77,20 +89,20 @@
       },
       "command": "python scripts/audit_dependencies.py",
       "result": {
-        "ru": "25 находок приняты до 6.11 с причиной",
-        "en": "25 findings accepted until 6 Nov with reasons"
+        "ru": "Свежий JSON: 25 находок приняты до 6.11",
+        "en": "Fresh JSON: 25 findings accepted until 6 Nov"
       },
       "status": "pass"
     },
     {
       "name": {
-        "ru": "Образ",
-        "en": "Image"
+        "ru": "Образ / UI",
+        "en": "Image / UI"
       },
-      "command": "docker build + runtime check",
+      "command": "docker runtime check",
       "result": {
-        "ru": "UID 10001; нет pytest, Ruff, mypy, uv",
-        "en": "UID 10001; no pytest, Ruff, mypy, uv"
+        "ru": "UID 10001; нет dev tools; UI без DB и ключа",
+        "en": "UID 10001; no dev tools; UI has no DB or key"
       },
       "status": "pass"
     },
@@ -99,10 +111,10 @@
         "ru": "Стенд с нуля",
         "en": "Stand from scratch"
       },
-      "command": "docker compose up --build --wait",
+      "command": "isolated compose up --build --wait",
       "result": {
-        "ru": "healthy за 35 с; 20 000 заказов, токен",
-        "en": "healthy in 35 s; 20,000 orders, token"
+        "ru": "healthy за 23.5 с; пароль со спецсимволами",
+        "en": "healthy in 23.5 s; reserved-character password"
       },
       "status": "pass"
     },
@@ -111,34 +123,22 @@
         "ru": "Smoke",
         "en": "Smoke"
       },
-      "command": "python3 scripts/smoke_stack.py",
+      "command": "python scripts/smoke_stack.py",
       "result": {
-        "ru": "8 из 8 проверок; после down + up снова 8",
-        "en": "8 of 8 checks; again 8 after down + up"
+        "ru": "8/8; после down + up снова 8/8, токен сохранён",
+        "en": "8/8; again 8/8 after down + up, token kept"
       },
       "status": "pass"
     },
     {
       "name": {
-        "ru": "Evals: эталон",
-        "en": "Evals: reference"
+        "ru": "Evals: эталон / mock",
+        "en": "Evals: reference / mock"
       },
-      "command": "docker compose exec api python -m app.evals",
+      "command": "python -m app.evals --provider reference / mock",
       "result": {
-        "ru": "42 / 42 внутри контейнера",
-        "en": "42 / 42 inside the container"
-      },
-      "status": "pass"
-    },
-    {
-      "name": {
-        "ru": "Чистый клон",
-        "en": "Clean clone"
-      },
-      "command": "git clone 728e8f4 + CI + compose up",
-      "result": {
-        "ru": "600 passed; стенд за 18 с, smoke пройден",
-        "en": "600 passed; stand in 18 s, smoke passed"
+        "ru": "42/42 и 17/42; инструменты 38/38 и 34/38",
+        "en": "42/42 and 17/42; tools 38/38 and 34/38"
       },
       "status": "pass"
     }
@@ -197,8 +197,8 @@
   "remote_ci": {
     "status": "not_verified",
     "detail": {
-      "ru": "Этап 10 проверен локально: код — коммит 728e8f4, документация — рабочее дерево поверх него. Новые задания (аудит, контейнер, публикация) на GitHub ещё не запускались. Пользователь подтвердил зелёные проверки для 63f3550 и 31f31bd.",
-      "en": "Stage 10 passed locally: the code is commit 728e8f4 and the documentation is the working tree on top of it. The new jobs (audit, container, publish) have not run on GitHub yet. The user confirmed green checks for 63f3550 and 31f31bd."
+      "ru": "Повторная локальная проверка поверх 363263a. Результаты новых заданий этапа 10 и публикации GHCR на GitHub не подтверждены. Пользователь ранее подтвердил зелёные проверки для 63f3550 и 31f31bd.",
+      "en": "Local stabilization checks on top of 363263a. Results of the new Stage 10 jobs and GHCR publication on GitHub are unconfirmed. The user previously confirmed green checks for 63f3550 and 31f31bd."
     }
   },
   "remaining": [
@@ -243,8 +243,8 @@
       "en": 54
     },
     "visual_review": {
-      "ru": "Все 54 страницы обеих версий просмотрены на контактных листах; обложка, разделы 43–45, шпаргалка и итоги — крупно.",
-      "en": "All 54 pages in each version reviewed on contact sheets; cover, sections 43–45, cheat sheet and results inspected at full size."
+      "ru": "Все 54 страницы обеих версий просмотрены на контактных листах; обложка, разделы 42–45 и итоги повторной проверки — крупно.",
+      "en": "All 54 pages in each version reviewed on contact sheets; the cover, sections 42–45 and stabilization results inspected at full size."
     }
   },
   "analytics": {
@@ -463,20 +463,22 @@
     "reference": {
       "passed": 42,
       "value_accuracy": 1.0,
-      "median_ms": 7
+      "median_ms": 5,
+      "tool_selection_rate": 1.0
     },
     "mock": {
       "passed": 17,
       "value_accuracy": 0.4737,
-      "tool_selection_rate": 0.9048,
+      "tool_selection_rate": 0.8947,
       "refusal_rate": 0.0,
-      "median_ms": 214
+      "median_ms": 208
     },
     "openai": null,
     "results": [
-      "evals/results/2026-10-22-reference.json",
-      "evals/results/2026-10-22-mock.json"
-    ]
+      "evals/results/2026-10-22-stabilization-reference.json",
+      "evals/results/2026-10-22-stabilization-mock.json"
+    ],
+    "tool_required_cases": 38
   },
   "delivery": {
     "image": "ghcr.io/merkertg/ai-data-analyst",
@@ -493,10 +495,20 @@
       "ui": 8502,
       "db": 5436
     },
-    "coverage_percent": 93.04,
+    "coverage_percent": 94.12,
     "audit": {
       "findings": 25,
       "accepted_until": "2026-11-06"
+    },
+    "stabilization": {
+      "compose_project": "ai-data-analyst-stabilization",
+      "database": "industrialflow_stabilization_test",
+      "fresh_healthy_seconds": 23.5,
+      "smoke_passed": 8,
+      "recreated_smoke_passed": 8,
+      "token_preserved": true,
+      "reserved_password_verified": true,
+      "ui_database_settings_absent": true
     }
   }
 }

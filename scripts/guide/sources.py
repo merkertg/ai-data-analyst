@@ -93,17 +93,14 @@ def app_facts() -> dict[str, str]:
 
 
 def schema_counts() -> dict[str, int]:
-    """Схема продаж этапа 02 без таблиц отчётов и истории запусков."""
+    """Count only Stage 02 sales tables, independent of later model imports."""
     sys.path.insert(0, str(PROJECT_ROOT))
     import app.db.models  # noqa: F401 — регистрирует таблицы
+    from app.data.generate import FIELDS
     from app.db.base import Base
 
-    # Later stages describe reports and agent_runs separately from sales data.
-    tables = [
-        table
-        for name, table in Base.metadata.tables.items()
-        if name not in {"reports", "agent_runs"}
-    ]
+    # The six exported sales tables exclude reports, agent_runs and api_tokens.
+    tables = [table for name, table in Base.metadata.tables.items() if name in FIELDS]
     counts = {"tables": len(tables), "indexes": 0}
     for table in tables:
         counts["indexes"] += len(table.indexes)

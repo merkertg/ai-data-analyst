@@ -27,6 +27,14 @@ What the application protects, how, and what is still open. The detailed Russian
 
 `/health`, `/ready`, `/docs`, `/redoc` and `/openapi.json` are open; they contain no business data. Tokens are issued, listed and revoked only with `python -m app.security` on the server, which needs direct database access; there is no token API. Revocation and expiry apply from the next request. A malformed token is rejected before any SQL.
 
+## Stand configuration and token file
+
+Compose passes separate database host, port, name, user and raw password to migrations, bootstrap and the API. SQLAlchemy `URL.create(...)` preserves reserved password characters such as `@`, `/`, `#` and `%` without manual encoding. The UI receives neither the database URL nor these components, and receives no OpenAI key. An explicitly configured `DATABASE_URL` takes priority in application settings; manually written host URLs still require percent-encoded username/password components. Compose does not forward the host's `.env` URL into the containers. See [Database](instructions/database.md#connection-settings).
+
+Bootstrap keeps the file token only when it authenticates with the analyst role. A viewer, expired, revoked or unknown token is replaced with a new analyst token; earlier active demo interface tokens are revoked when issuing the replacement. The UI mounts the token volume read-only.
+
+Writes use `tempfile.mkstemp` to create a unique `0600` temporary file in the destination directory, followed by atomic replacement. A pre-existing fixed `.tmp` file or symlink is never opened or truncated; a failed write or replace removes the new temporary file. A valid analyst token in a regular `0600` file stays untouched. If that credential is stored in a permissive file or behind a symlink, bootstrap atomically installs the same credential in a regular `0600` file, without following a symlink for `chmod` or modifying its target. These changes were added during the 2026-10-22 stabilisation; their verification is recorded in [VERIFICATION.md](VERIFICATION.md).
+
 ## Rate limits
 
 | Setting | Default | Route |
