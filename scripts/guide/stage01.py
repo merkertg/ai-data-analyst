@@ -249,14 +249,17 @@ def add_stage01(story, verification, dependencies, lock_packages, facts):
         callout(
             tr(
                 "<b>Политика возраста пакетов.</b> "
-                + mono('[tool.uv] exclude-newer = "2026-10-06T00:00:00Z"')
-                + " — uv не видит выпуски PyPI новее этой даты. Свежий выпуск бывает "
-                "сломан или даже вредоносен; за две недели такие проблемы обычно находят.",
+                + mono('[tool.uv] exclude-newer = "2026-10-09T00:00:00Z"')
+                + " — общая граница обычных обновлений. Точечные даты "
+                "exclude-newer-package допускают исправления безопасности для "
+                "Streamlit, Pillow и certifi. Это не исключения из аудита; "
+                "подробнее — раздел 45 и docs/DEPENDENCY_UPDATES.md.",
                 "<b>Package age policy.</b> "
-                + mono('[tool.uv] exclude-newer = "2026-10-06T00:00:00Z"')
-                + " — uv ignores PyPI releases newer than this date. A fresh release "
-                "may be broken or even malicious; within two weeks such problems are "
-                "usually found.",
+                + mono('[tool.uv] exclude-newer = "2026-10-09T00:00:00Z"')
+                + " — the general cutoff for ordinary updates. Package-specific "
+                "exclude-newer-package dates allow security fixes for Streamlit, "
+                "Pillow and certifi. They do not bypass the audit; see section 45 "
+                "and docs/DEPENDENCY_UPDATES.md.",
             ),
             VIOLET,
             VIOLET_L,

@@ -213,14 +213,15 @@ def add_stage10(story):
         Spacer(1, 7),
         callout(
             tr(
-                "<b>Текущая локальная проверка.</b> Отдельный тестовый стенд Compose "
-                "собран и healthy за 23.5 с с зарезервированными символами в пароле. "
-                "Smoke — 8/8 до и 8/8 после пересоздания; данные и токен сохранены. "
-                "Это проверка локального образа, а не подтверждение публикации.",
-                "<b>Current local check.</b> An isolated test Compose stand built "
-                "and became healthy in 23.5 s with reserved characters in its "
-                "password. Smoke: 8/8 before and 8/8 after re-creation; data and "
-                "the token persisted. This verifies a local image, not publication.",
+                "<b>23 октября:</b> свежая сборка отдельного стенда, схема 0004, seed 42, "
+                "smoke 8/8. <b>История 22 октября:</b> healthy за 23.5 с с "
+                "зарезервированными символами в пароле; smoke 8/8 до и после "
+                "пересоздания, данные и токен сохранены. Публикация не подтверждена.",
+                "<b>23 October:</b> a fresh isolated stand build, schema 0004, "
+                "seed 42, smoke 8/8. <b>Historical, 22 October:</b> healthy in "
+                "23.5 s with reserved characters in the password; smoke 8/8 "
+                "before and after re-creation, data and token kept. Publication "
+                "is unconfirmed.",
             ),
             AMBER,
             AMBER_L,
@@ -245,8 +246,8 @@ def add_stage10(story):
                 [
                     "Lint, types and tests",
                     tr(
-                        "Ruff: 197 файлов; mypy: 130. 690 тестов: 522 unit + 168 integration, 39.66 с; покрытие 94.12 %, порог 90 %.",
-                        "Ruff: 197 files; mypy: 130. 690 tests: 522 unit + 168 integration, 39.66 s; coverage 94.12%, threshold 90%.",
+                        "Ruff: 198 файлов; mypy: 130. 690 тестов: 522 unit + 168 integration, 40.44 с; покрытие 94.12 %, порог 90 %.",
+                        "Ruff: 198 files; mypy: 130. 690 tests: 522 unit + 168 integration, 40.44 s; coverage 94.12%, threshold 90%.",
                     ),
                 ],
                 [
@@ -277,17 +278,26 @@ def add_stage10(story):
         p(tr("Аудит против политики 14 дней", "Audit versus the 14-day policy"), H2),
         p(
             tr(
-                "Первый аудит нашёл 24 уязвимости Pillow 12.3.0 и одну certifi. "
-                "Исправления вышли 16 и 20 октября, а Pillow 13 требует и Streamlit "
-                "1.66 — всё моложе 14 дней. Политику сохранили: находки приняты "
-                "до 6 ноября с причиной (проект не декодирует изображения, HTTPS "
-                "только к OpenAI). Просроченное или лишнее исключение роняет аудит.",
-                "The first audit found 24 Pillow 12.3.0 vulnerabilities and one in "
-                "certifi. Fixes came out on 16 and 20 October, and Pillow 13 also "
-                "needs Streamlit 1.66 — all younger than 14 days. The policy stays: "
-                "findings are accepted until 6 November with a reason (no image "
-                "decoding; HTTPS only to OpenAI). An expired or stale exception "
-                "fails the audit.",
+                "22 октября временно приняли 25 находок; 23 октября CI сообщил о "
+                "37. Решение — исправленные зависимости и пустой список принятых "
+                "уязвимостей. Нужны Streamlit 1.66.1, Pillow 13.0.0, certifi "
+                "2026.10.19 и opentelemetry-api 1.45.1. Старый совет о Streamlit "
+                "1.66 неверен: 1.66.0 требует pillow&lt;13. Общая граница — 9 октября; "
+                "точечные даты допускают только свежие исправления Streamlit, "
+                "Pillow и certifi. Это исключения из возраста, а не из аудита; "
+                "нижние границы защищают от возврата уязвимых версий. Фиксированный "
+                "OpenAI-хост не устраняет риск emSign: скомпрометированный "
+                "сертификат мог удостоверять любые имена хостов.",
+                "25 findings were temporarily accepted on 22 October; CI reported "
+                "37 on 23 October. The fix updates dependencies and leaves no "
+                "accepted vulnerabilities. Require Streamlit 1.66.1, Pillow 13.0.0, "
+                "certifi 2026.10.19 and opentelemetry-api 1.45.1. The old Streamlit "
+                "1.66 advice was wrong: 1.66.0 requires pillow&lt;13. The general "
+                "cutoff is 9 October; package-specific dates allow only the younger "
+                "Streamlit, Pillow and certifi fixes. These are age exceptions, not "
+                "audit exceptions; lower bounds block vulnerable versions. A fixed "
+                "OpenAI hostname does not remove the emSign risk: the compromised "
+                "certificate could authenticate arbitrary hostnames.",
             ),
             BODY_S,
         ),

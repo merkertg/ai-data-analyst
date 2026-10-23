@@ -35,6 +35,16 @@ findings. Missing or malformed output and operational failures fail the job;
 an earlier successful report cannot make a failed audit pass. An exit status
 indicating vulnerabilities together with a clean report also fails.
 
+Ordinary dependency updates follow the global 14-day cutoff. Reviewed
+security fixes may use dated entries in `[tool.uv.exclude-newer-package]`
+for specific packages; lower-bound constraints keep vulnerable versions
+out of later resolutions. This release-age exception does not bypass
+pip-audit or accept a vulnerability. The 2026-10-23 update requires
+Streamlit 1.66.1 for Pillow 13: Streamlit 1.66.0 still requires `pillow<13`.
+The fixed findings were removed from the audit exceptions. See
+[Dependency updates](../DEPENDENCY_UPDATES.md) for exact versions and dates,
+and [Verification](../VERIFICATION.md) for actual check results.
+
 Check this behavior without network access or an actual audit subprocess:
 
 ```bash

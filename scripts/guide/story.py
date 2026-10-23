@@ -207,10 +207,12 @@ def build_story(verification, dependencies, lock_packages, facts, counts):
             tr(
                 "<b>Границы проверки:</b> доступ по токенам и 42 eval-вопроса "
                 "добавлены на этапе 09, но настоящая модель OpenAI ещё не измерена — "
-                "нет ключа. Публикация в Docker (10) впереди.",
+                "нет ключа. Все десять этапов реализованы; свежий удалённый CI "
+                "и публикация образа проверяются отдельно.",
                 "<b>Verification limits:</b> token access and 42 eval questions "
                 "were added in Stage 09, but a real OpenAI model has not been "
-                "measured yet: there is no key. Docker release (10) comes next.",
+                "measured yet: there is no key. All ten stages are implemented; "
+                "fresh remote CI and image publication are checked separately.",
             ),
             AMBER,
             AMBER_L,
@@ -883,7 +885,13 @@ def build_story(verification, dependencies, lock_packages, facts, counts):
             ],
             [74, 190, W - 310, 46],
         ),
-        p(tr("Ответы сервера", "Server responses"), H2),
+        p(
+            tr(
+                "Ответы сервера: история " + verification["http_checked_at"],
+                "Server responses: historical " + verification["http_checked_at"],
+            ),
+            H2,
+        ),
         tight_table(
             [tr("Запрос", "Request"), tr("Код", "Code"), tr("Тело", "Body")],
             [

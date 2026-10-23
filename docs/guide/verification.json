@@ -1,6 +1,6 @@
 {
-  "checked_at": "2026-10-22",
-  "base_commit": "363263a + stabilization worktree",
+  "checked_at": "2026-10-23",
+  "base_commit": "16a4ddc + security fixes",
   "stage": 10,
   "environment": {
     "os": {
@@ -19,7 +19,7 @@
     "passed": 690,
     "failed": 0,
     "skipped": 0,
-    "seconds": 39.66
+    "seconds": 40.44
   },
   "checks": [
     {
@@ -29,8 +29,8 @@
       },
       "command": "CI=true pytest --cov",
       "result": {
-        "ru": "690 passed; покрытие 94.12 % (порог 90)",
-        "en": "690 passed; coverage 94.12% (gate 90)"
+        "ru": "690 passed; 40.44 с; покрытие 94.12 %",
+        "en": "690 passed; 40.44 s; coverage 94.12%"
       },
       "status": "pass"
     },
@@ -41,8 +41,8 @@
       },
       "command": "ruff check . / ruff format --check .",
       "result": {
-        "ru": "197 файлов, включая Markdown",
-        "en": "197 files, Markdown included"
+        "ru": "Код и Markdown без ошибок",
+        "en": "Code and Markdown pass"
       },
       "status": "pass"
     },
@@ -63,10 +63,10 @@
         "ru": "Lock",
         "en": "Lock"
       },
-      "command": "uv lock --check",
+      "command": "uv lock --check --offline",
       "result": {
-        "ru": "81 пакет; версии не менялись",
-        "en": "81 packages; versions unchanged"
+        "ru": "80 пакетов; 4 обновлены, toml удалён",
+        "en": "80 packages; 4 updated, toml removed"
       },
       "status": "pass"
     },
@@ -75,10 +75,10 @@
         "ru": "Миграции",
         "en": "Migrations"
       },
-      "command": "pytest migrations / alembic check",
+      "command": "pytest / compose migrate",
       "result": {
-        "ru": "Схема 0004; расхождений нет",
-        "en": "Schema 0004; no drift"
+        "ru": "Тесты цикла миграций; стенд на 0004",
+        "en": "Migration-cycle tests; stand on 0004"
       },
       "status": "pass"
     },
@@ -89,20 +89,20 @@
       },
       "command": "python scripts/audit_dependencies.py",
       "result": {
-        "ru": "Свежий JSON: 25 находок приняты до 6.11",
-        "en": "Fresh JSON: 25 findings accepted until 6 Nov"
+        "ru": "Свежий JSON: 0 находок, 0 принятых",
+        "en": "Fresh JSON: 0 findings, 0 accepted"
       },
       "status": "pass"
     },
     {
       "name": {
-        "ru": "Образ / UI",
-        "en": "Image / UI"
+        "ru": "Версии в API",
+        "en": "API versions"
       },
-      "command": "docker runtime check",
+      "command": "importlib.metadata.version",
       "result": {
-        "ru": "UID 10001; нет dev tools; UI без DB и ключа",
-        "en": "UID 10001; no dev tools; UI has no DB or key"
+        "ru": "Все 4 исправленные версии подтверждены",
+        "en": "All 4 fixed versions confirmed"
       },
       "status": "pass"
     },
@@ -113,8 +113,8 @@
       },
       "command": "isolated compose up --build --wait",
       "result": {
-        "ru": "healthy за 23.5 с; пароль со спецсимволами",
-        "en": "healthy in 23.5 s; reserved-character password"
+        "ru": "Новая сборка; healthy; seed 42; схема 0004",
+        "en": "Fresh build; healthy; seed 42; schema 0004"
       },
       "status": "pass"
     },
@@ -125,20 +125,20 @@
       },
       "command": "python scripts/smoke_stack.py",
       "result": {
-        "ru": "8/8; после down + up снова 8/8, токен сохранён",
-        "en": "8/8; again 8/8 after down + up, token kept"
+        "ru": "8/8 на новом изолированном стенде",
+        "en": "8/8 on the new isolated stand"
       },
       "status": "pass"
     },
     {
       "name": {
-        "ru": "Evals: эталон / mock",
-        "en": "Evals: reference / mock"
+        "ru": "Evals: 22 октября",
+        "en": "Evals: 22 October"
       },
       "command": "python -m app.evals --provider reference / mock",
       "result": {
-        "ru": "42/42 и 17/42; инструменты 38/38 и 34/38",
-        "en": "42/42 and 17/42; tools 38/38 and 34/38"
+        "ru": "История: 42/42 и 17/42; инструменты 38/38 и 34/38",
+        "en": "Historical: 42/42 and 17/42; tools 38/38 and 34/38"
       },
       "status": "pass"
     }
@@ -197,8 +197,8 @@
   "remote_ci": {
     "status": "not_verified",
     "detail": {
-      "ru": "Повторная локальная проверка поверх 363263a. Результаты новых заданий этапа 10 и публикации GHCR на GitHub не подтверждены. Пользователь ранее подтвердил зелёные проверки для 63f3550 и 31f31bd.",
-      "en": "Local stabilization checks on top of 363263a. Results of the new Stage 10 jobs and GHCR publication on GitHub are unconfirmed. The user previously confirmed green checks for 63f3550 and 31f31bd."
+      "ru": "Локально проверены исправления безопасности поверх 16a4ddc. Новый GitHub Actions и публикация GHCR после исправления не подтверждены. Прежние зелёные проверки 63f3550 и 31f31bd подтвердил пользователь.",
+      "en": "Security fixes on top of 16a4ddc were checked locally. A new GitHub Actions run and GHCR publication after the fix are unconfirmed. The user confirmed earlier green checks for 63f3550 and 31f31bd."
     }
   },
   "remaining": [
@@ -207,12 +207,8 @@
       "en": "Measure a real OpenAI model on the 42 questions once a key is available."
     },
     {
-      "ru": "Обновить Pillow, Streamlit и certifi после 30 октября — 3 ноября и удалить исключения аудита.",
-      "en": "Update Pillow, Streamlit and certifi after 30 October – 3 November and remove the audit exceptions."
-    },
-    {
-      "ru": "Подтвердить новые задания CI и публикацию в GHCR после push; для сервера — HTTPS, подпись образа и arm64.",
-      "en": "Confirm the new CI jobs and GHCR delivery after the push; for a server — HTTPS, image signing and arm64."
+      "ru": "Подтвердить CI и публикацию GHCR после push; для сервера нужны HTTPS, подпись образа и arm64.",
+      "en": "Confirm CI and GHCR publication after the push; server delivery still needs HTTPS, image signing and arm64."
     }
   ],
   "dataset": {
@@ -243,8 +239,8 @@
       "en": 54
     },
     "visual_review": {
-      "ru": "Все 54 страницы обеих версий просмотрены на контактных листах; обложка, разделы 42–45 и итоги повторной проверки — крупно.",
-      "en": "All 54 pages in each version reviewed on contact sheets; the cover, sections 42–45 and stabilization results inspected at full size."
+      "ru": "Все 54 страницы обеих версий просмотрены на контактных листах; обложки, зависимости, раздел 45 и итоги проверки - крупно.",
+      "en": "All 54 pages in each version reviewed on contact sheets; covers, dependencies, section 45 and verification results inspected at full size."
     }
   },
   "analytics": {
@@ -441,7 +437,8 @@
     "net_change": "-165497371.86",
     "percent": "-26.18",
     "pumps_contribution": "83.75",
-    "anomaly_candidates": 33
+    "anomaly_candidates": 33,
+    "checked_at": "2026-10-21"
   },
   "security": {
     "migration": "0004",
@@ -478,7 +475,8 @@
       "evals/results/2026-10-22-stabilization-reference.json",
       "evals/results/2026-10-22-stabilization-mock.json"
     ],
-    "tool_required_cases": 38
+    "tool_required_cases": 38,
+    "checked_at": "2026-10-22"
   },
   "delivery": {
     "image": "ghcr.io/merkertg/ai-data-analyst",
@@ -497,8 +495,9 @@
     },
     "coverage_percent": 94.12,
     "audit": {
-      "findings": 25,
-      "accepted_until": "2026-11-06"
+      "checked_at": "2026-10-23",
+      "findings": 0,
+      "accepted": 0
     },
     "stabilization": {
       "compose_project": "ai-data-analyst-stabilization",
@@ -508,7 +507,25 @@
       "recreated_smoke_passed": 8,
       "token_preserved": true,
       "reserved_password_verified": true,
-      "ui_database_settings_absent": true
+      "ui_database_settings_absent": true,
+      "checked_at": "2026-10-22"
+    },
+    "security_update": {
+      "checked_at": "2026-10-23",
+      "compose_project": "ai-data-analyst-security-20261023",
+      "image": "ai-data-analyst:security-20261023",
+      "revision": "0004",
+      "seed": 42,
+      "smoke_passed": 8,
+      "runtime_versions": {
+        "certifi": "2026.10.19",
+        "opentelemetry-api": "1.45.1",
+        "pillow": "13.0.0",
+        "streamlit": "1.66.1"
+      },
+      "own_volumes_removed": true,
+      "original_db_services_preserved": true
     }
-  }
+  },
+  "http_checked_at": "2026-10-22"
 }

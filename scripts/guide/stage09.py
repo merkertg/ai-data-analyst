@@ -329,12 +329,12 @@ def add_stage09(story):
         Spacer(1, 6),
         p(
             tr(
-                "На 42 вопросах SQL и независимый Pandas совпали до копейки. "
+                "История 22 октября: SQL и Pandas совпали до копейки на 42 вопросах. "
                 "Выбор инструментов: только 38 вопросов с tools_any; 4 без "
                 "инструмента исключены, неудачный запуск — промах. Reference: "
                 "38/38, mock: 34/38 = 0.8947; пройдено по-прежнему 42/42 и 17/42. "
                 "Нет подходящих вопросов — метрика null. Модель мерит --provider openai.",
-                "SQL and independent Pandas agree to the kopeck on 42 questions. "
+                "Historical, 22 October: SQL and Pandas agree to the kopeck on 42 questions. "
                 "Tool selection covers only 38 cases with tools_any; 4 requiring "
                 "no tool are excluded and failed runs are misses. Reference: "
                 "38/38, mock: 34/38 = 0.8947; passes remain 42/42 and 17/42. "

@@ -17,7 +17,7 @@ dependencies = [
     "pydantic-settings>=2.15.0",   # Настройки из переменных окружения и .env.
     "scikit-learn>=1.7,<2",
     "sqlalchemy>=2.0,<3",          # Модели таблиц, соединения, сессии и транзакции.
-    "streamlit>=1.50,<2",         # Local dashboard, agent questions and saved report UI.
+    "streamlit>=1.66.1,<2",         # Local dashboard, agent questions and saved report UI.
     "uvicorn[standard]>=0.54.0",   # ASGI-сервер, который слушает порт и вызывает app.
 ]
 
@@ -25,7 +25,20 @@ dependencies = [
 # uv не видит файлы PyPI новее этой даты. При обновлении зависимостей сдвигай
 # дату не ближе чем на 14 дней к текущему дню.
 [tool.uv]
-exclude-newer = "2026-10-06T00:00:00Z"
+exclude-newer = "2026-10-09T00:00:00Z"
+# Security floors also apply when the lock is regenerated from scratch.
+constraint-dependencies = [
+    "certifi>=2026.10.19",
+    "opentelemetry-api>=1.45.1",
+    "pillow>=13.0.0",
+]
+
+# Reviewed security updates: bounded exceptions to the normal 14-day policy.
+# Keep the global cutoff for every other dependency; see docs/DEPENDENCY_UPDATES.md.
+[tool.uv.exclude-newer-package]
+certifi = "2026-10-21T00:00:00Z"
+pillow = "2026-10-17T00:00:00Z"
+streamlit = "2026-10-22T00:00:00Z"
 
 # Инструменты разработки: uv sync устанавливает группу dev по умолчанию,
 # а в будущий production-образ она не попадёт.
