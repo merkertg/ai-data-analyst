@@ -124,43 +124,6 @@ Fixed before any data exists, so that every later stage uses the same rules:
 - Category or region contributions use signed group net-revenue deltas divided by the total delta. Zero total change gives `None`; percentages may exceed 100%, be negative, and differ from a 100% sum after rounding. Both periods contribute group names, including refund-only groups. Results sort by delta ascending, then name.
 - JSON preserves monetary values as decimal strings and unavailable values as `null`. The CLI reads all requested results inside one read-only `REPEATABLE READ` transaction.
 
-## Verification and CI
-
-Unit tests cover HTTP responses, settings, schema structure, deterministic data generation and bundle handling, positive and negative anomaly cases, insufficient histories, stockout gaps, model reproducibility and offline coverage matching. Security tests attack tokens, roles, rate limits, SQL arguments, read-only sessions, the statement timeout and a hostile scripted model; agent evals run 42 questions on the seed 42 bundle. Integration tests use a real PostgreSQL database whose name must end with `_test`: migrations, readiness, constraints, exact money and time round trips, SQL examples, data loading, cross-table quality rules, exact analytics and anomaly features against manual and generated fixtures. Tests use `TEST_DATABASE_URL` only and never the development `.env` address. Ruff checks style and formatting; mypy runs in strict mode over `app`, `ui`, `tests` and `migrations`. GitHub Actions repeats the configured checks on `ubuntu-24.04` with a PostgreSQL service, SHA-pinned actions and read-only permissions. Actual counts, results and limits belong in [VERIFICATION.md](VERIFICATION.md); local results do not establish a successful remote run. The workflow is explained in [CI_CD.md](CI_CD.md).
-
-## Decisions
-
-Architecture decisions are recorded as ADRs in [adr/](adr/):
-
-- [ADR 0001: Application layout and tooling](adr/0001-application-layout-and-tooling.md) — `uv init --app --no-package`, `app/` at the root with pytest `pythonpath`, locked dependencies with a 14-day age policy, Ruff and strict mypy, `httpx2` for the test client.
-- [ADR 0002: PostgreSQL schema, integrity rules and migrations](adr/0002-postgresql-schema-and-migrations.md) — six normalised tables, integrity enforced by PostgreSQL, `NUMERIC`/`Decimal` money, `timestamptz` with Moscow reporting months, Alembic as the only way to build the schema, `/ready`.
-
-- [ADR 0003: Reproducible demo data and safe loading](adr/0003-reproducible-demo-data-and-safe-loading.md) — standard-library seeded generation, exact monetary serialization, manifest integrity, atomic loading and quality checks.
-- [ADR 0004: Deterministic analytics core](adr/0004-deterministic-analytics-core.md) — explicit period semantics, independent SQL aggregates, exact comparisons, signed contributions and a snapshot-consistent CLI without Pandas or DuckDB.
-- [ADR 0005: Anomaly detection and offline evaluation](adr/0005-anomaly-detection-and-offline-evaluation.md) — full-month retrospective rules, seeded Isolation Forest, exact feature extraction and separate positive-scenario coverage.
-- [ADR 0006: REST API and saved reports](adr/0006-rest-api-and-saved-reports.md) — thin routers over shared services, validated query models, lazy read-only snapshot sessions, money as JSON strings, safe 503 mapping and immutable JSONB report snapshots.
-- [ADR 0007: AI agent with tool calling and verified reports](adr/0007-ai-agent-tool-calling.md) — fixed read-only tools with strict arguments, a server-owned bounded loop, a structured report whose numbers are checked against tool results, mock and OpenAI providers, stored run history.
-- [ADR 0008: Streamlit interface](adr/0008-streamlit-interface.md) — an HTTP-only local client with exact labels, explicit saves and downloads.
-- [ADR 0010: Docker packaging, demo bootstrap and image delivery](adr/0010-docker-packaging-and-delivery.md) — one non-root image for every service, an idempotent bootstrap with demo data and an interface token, a blocking dependency audit with dated exceptions, a Docker smoke test and publication of the tested image to GHCR.
-- [ADR 0009: Access control, SQL limits and agent evaluations](adr/0009-access-control-and-agent-evals.md) — hashed bearer tokens with viewer and analyst roles, per-token rate limits, a statement timeout, and 42 eval questions scored against an independent Pandas oracle.
-
-## Architecture
-
-The target architecture after all ten stages:
-
-```text
-Streamlit interface: chat, dashboard, charts, reports
-             ↓ HTTP / JSON
-FastAPI: validation, access control, request handling
-             ↓
-AI analyst agent: LLM, analysis plan, tool calling
-     ├─ SQL tools → repositories → PostgreSQL
-     ├─ Python tools → Pandas, anomaly detection
-     └─ report builder → facts, conclusions, charts, sources, limits
-```
-
-The interface talks only to the API. The agent can call only registered tools; each tool runs a predefined parameterised query or a Python calculation and returns structured results that the report cites.
-
 ## Demonstration data and evaluation
 
 The default bundle contains 640 customers, 64 products, 20,000 orders and daily inventory snapshots across eight regions for January–September 2026. The generator uses a local seeded `random.Random` instance and deterministic `Decimal` calculations. It writes the six table CSV files, `manifest.json` and `ground_truth.json` to a new or empty directory. Identical parameters produce identical file bytes. The manifest describes the schema version, seed, row counts and file hashes. Bundle validation protects the loader from incomplete or changed inputs; the loader refuses to overwrite existing business data and imports all tables in a single transaction. Loading needs only the six CSV files and the manifest; it never reads the evaluation answer key.
@@ -204,6 +167,14 @@ Arguments are validated by strict Pydantic models before any SQL (unknown fields
 
 `AgentRuntime` owns the loop: defaults are 8 model turns, 16 tool calls, 2 report corrections, a 120-second time budget and 120,000 transcript characters. The time budget is checked between operations, and model requests receive the smaller remaining timeout; an in-flight synchronous SQL/tool call is not interrupted at the deadline. The final `AnalysisReport` separates facts, hypotheses, recommendations and limitations. Each fact cites evidence (`call_id`, dotted field path, exact value). Every evidence reference must resolve to the exact scalar value from a successful tool call. Recognised numeric literals in facts and hypotheses must match their own evidence by magnitude; the summary, recommendations and limitations may use evidence from the whole report. ISO dates, calendar-context years, codes and cited names are excluded; bare four-digit amounts and numbers followed by units still require evidence. The checker does not prove metric identity, sign, date correctness or causation, and may not recognise number words or other notation. Problems are sent back as a correction. Completed runs and handled `LLMError` failures are stored in `agent_runs` with their partial trace when storage succeeds; configuration failures before the run and tool/database failures have no stored run. Runtime tools do not read the ground truth.
 
+## Streamlit interface
+
+`ui/main.py` runs only the selected page: Dashboard, AI analyst or Reports. `APIClient` uses standard-library urllib with a validated loopback origin, bounded responses and shared Pydantic response schemas. It ignores proxies, rejects redirects and never retries POST. UI settings have a 150-second default socket waiting timeout; timing out does not cancel work already started by the API. No UI code opens database connections or invokes the LLM.
+
+Date forms are explicit, with editable demonstration presets and half-open Moscow periods. `DashboardSnapshot` stores the submitted query together with the three HTTP results, so unsubmitted widget edits cannot change the parameters of a save. Those GETs use separate database snapshots. Save recomputes through `POST /api/reports` and renders the returned immutable result. Plotly uses floats only for coordinates; exact money remains Decimal and string labels, hover customdata and JSON.
+
+Each chat question is an independent investigation, not a continuation of previous messages. At most 20 entries stay in the current browser session; stored API history is paginated in sets of ten, including failed runs. A handled failure UUID can open its partial trace. Reports and investigations can be downloaded as JSON. `AppTest` checks actions and reruns with a fake API; a real-browser smoke check is recorded separately. See [ADR 0008](adr/0008-streamlit-interface.md).
+
 ## Security
 
 Every `/api` route requires `Authorization: Bearer <token>`. Tokens are `ida_` plus 32 random bytes, shown once and stored only as SHA-256 hashes with a role (`viewer` reads; `analyst` may also save reports and ask the agent), an optional expiry and a revocation time (migration `0004`). They are managed with `python -m app.security` on the server. Missing, malformed, unknown, revoked and expired tokens get one identical 401; malformed tokens are rejected before SQL. Agent runs and report saves are limited per token per minute (429 with `Retry-After`). Every application connection sets a PostgreSQL `statement_timeout`. The threat model, controls and known gaps are in [SECURITY.md](SECURITY.md).
@@ -212,24 +183,52 @@ Every `/api` route requires `Authorization: Bearer <token>`. Tokens are `ida_` p
 
 [evals/cases.json](../evals/cases.json) holds 42 questions in Russian and English: metrics, comparisons, contributions, refunds, products, stock, missing data, refusals and a prompt injection. A Pandas oracle computes the expected values from the CSV bundle in integer kopecks, independently of PostgreSQL and the analytics core. Cases run through the production runtime and evidence check and are scored on completion, language, tool choice, cited values, refusals and planted numbers. On the seed 42 dataset the reference provider passes 42 of 42 (SQL tools and the oracle agree on every value), the demo provider 17 of 42; a real model has not been measured. Method and results are in [EVALUATION.md](EVALUATION.md).
 
+## Verification and CI
+
+Unit tests cover HTTP responses, settings, schema structure, deterministic data generation and bundle handling, positive and negative anomaly cases, insufficient histories, stockout gaps, model reproducibility and offline coverage matching. Security tests attack tokens, roles, rate limits, SQL arguments, read-only sessions, the statement timeout and a hostile scripted model; agent evals run 42 questions on the seed 42 bundle. Integration tests use a real PostgreSQL database whose name must end with `_test`: migrations, readiness, constraints, exact money and time round trips, SQL examples, data loading, cross-table quality rules, exact analytics and anomaly features against manual and generated fixtures. Tests use `TEST_DATABASE_URL` only and never the development `.env` address. Ruff checks style and formatting; mypy runs in strict mode over `app`, `ui`, `tests` and `migrations`. GitHub Actions repeats the configured checks on `ubuntu-24.04` with a PostgreSQL service, SHA-pinned actions and read-only permissions. Actual counts, results and limits belong in [VERIFICATION.md](VERIFICATION.md); local results do not establish a successful remote run. The workflow is explained in [CI_CD.md](CI_CD.md).
+
 ## Delivery
 
 `docker compose up --build` builds one two-stage image (locked runtime dependencies, no uv or development tools, UID 10001) and starts `db`, `migrate`, `bootstrap`, `api` and `ui`, all bound to `127.0.0.1`. The bootstrap step requires the latest migration, loads the seed 42 bundle only into an empty database and keeps one valid analyst token for the interface in a `0600` file on its own volume. The interface reaches the API by the service name `api`, which it accepts only from an explicit allow-list of single-label names, and has no database address or model key. CI gates coverage at 90 %, audits the locked runtime dependencies with explained exceptions that expire within 30 days, smoke-tests the stand before and after re-creation and publishes the tested image to GHCR (`:main`, `:sha-…`, `:vX.Y.Z`). Details: [STAGE_10.md](STAGE_10.md), [RELEASES.md](RELEASES.md), [DEPENDENCY_UPDATES.md](DEPENDENCY_UPDATES.md).
 
 The 2026-10-22 stabilisation makes bootstrap require analyst permissions before keeping an existing token; a viewer token triggers replacement. Token files are written through unique same-directory `mkstemp` files (`0600`), atomically replaced and cleaned up on write or replace failure. Stale fixed `.tmp` paths are never reused. A valid analyst credential in a permissive file or behind a symlink is retained while its file is replaced with a regular private file; the symlink target is not modified. A regular `0600` analyst file is left untouched.
 
-## Future work
+## Architecture
+
+The architecture after all ten stages:
+
+```text
+Streamlit interface: dashboard, AI analyst, reports, Plotly charts
+             ↓ HTTP / JSON, bearer token
+FastAPI: validation, roles, rate limits, request handling
+             ↓
+AI analyst agent: mock or OpenAI provider, bounded tool-calling loop
+     ├─ SQL tools → analytics core → PostgreSQL (read-only snapshots)
+     ├─ Python tools → robust statistics, stockout rules, Isolation Forest
+     └─ structured report → facts, hypotheses, recommendations, checked evidence
+```
+
+The interface talks only to the API. The agent can call only registered tools; each tool runs a predefined parameterised query or a Python calculation and returns structured results that the report cites.
+
+## Decisions
+
+Architecture decisions are recorded as ADRs in [adr/](adr/):
+
+- [ADR 0001: Application layout and tooling](adr/0001-application-layout-and-tooling.md) — `uv init --app --no-package`, `app/` at the root with pytest `pythonpath`, locked dependencies with a 14-day age policy, Ruff and strict mypy, `httpx2` for the test client.
+- [ADR 0002: PostgreSQL schema, integrity rules and migrations](adr/0002-postgresql-schema-and-migrations.md) — six normalised tables, integrity enforced by PostgreSQL, `NUMERIC`/`Decimal` money, `timestamptz` with Moscow reporting months, Alembic as the only way to build the schema, `/ready`.
+- [ADR 0003: Reproducible demo data and safe loading](adr/0003-reproducible-demo-data-and-safe-loading.md) — standard-library seeded generation, exact monetary serialization, manifest integrity, atomic loading and quality checks.
+- [ADR 0004: Deterministic analytics core](adr/0004-deterministic-analytics-core.md) — explicit period semantics, independent SQL aggregates, exact comparisons, signed contributions and a snapshot-consistent CLI without Pandas or DuckDB.
+- [ADR 0005: Anomaly detection and offline evaluation](adr/0005-anomaly-detection-and-offline-evaluation.md) — full-month retrospective rules, seeded Isolation Forest, exact feature extraction and separate positive-scenario coverage.
+- [ADR 0006: REST API and saved reports](adr/0006-rest-api-and-saved-reports.md) — thin routers over shared services, validated query models, lazy read-only snapshot sessions, money as JSON strings, safe 503 mapping and immutable JSONB report snapshots.
+- [ADR 0007: AI agent with tool calling and verified reports](adr/0007-ai-agent-tool-calling.md) — fixed read-only tools with strict arguments, a server-owned bounded loop, a structured report whose numbers are checked against tool results, mock and OpenAI providers, stored run history.
+- [ADR 0008: Streamlit interface](adr/0008-streamlit-interface.md) — an HTTP-only local client with exact labels, explicit saves and downloads.
+- [ADR 0009: Access control, SQL limits and agent evaluations](adr/0009-access-control-and-agent-evals.md) — hashed bearer tokens with viewer and analyst roles, per-token rate limits, a statement timeout, and 42 eval questions scored against an independent Pandas oracle.
+- [ADR 0010: Docker packaging, demo bootstrap and image delivery](adr/0010-docker-packaging-and-delivery.md) — one non-root image for every service, an idempotent bootstrap with demo data and an interface token, a blocking dependency audit with dated exceptions, a Docker smoke test and publication of the tested image to GHCR.
+
+## Next steps
 
 - Measure a real OpenAI model on the 42 eval questions and record the model name, date and results.
-- Update Pillow, Streamlit and certifi once their fixes pass the 14-day age policy and remove the audit exceptions.
+- Confirm the four CI jobs and the first GHCR publication on GitHub after the dependency security update.
 - Sign images and attach SBOMs; build and publish arm64 in CI.
 - HTTPS and shared rate-limit storage before any deployment beyond localhost; an audit trail of who saved reports and asked questions.
 - Automated dependency-update pull requests, as in the first course project.
-
-## Streamlit interface
-
-`ui/main.py` runs only the selected page: Dashboard, AI analyst or Reports. `APIClient` uses standard-library urllib with a validated loopback origin, bounded responses and shared Pydantic response schemas. It ignores proxies, rejects redirects and never retries POST. UI settings have a 150-second default socket waiting timeout; timing out does not cancel work already started by the API. No UI code opens database connections or invokes the LLM.
-
-Date forms are explicit, with editable demonstration presets and half-open Moscow periods. `DashboardSnapshot` stores the submitted query together with the three HTTP results, so unsubmitted widget edits cannot change the parameters of a save. Those GETs use separate database snapshots. Save recomputes through `POST /api/reports` and renders the returned immutable result. Plotly uses floats only for coordinates; exact money remains Decimal and string labels, hover customdata and JSON.
-
-Each chat question is an independent investigation, not a continuation of previous messages. At most 20 entries stay in the current browser session; stored API history is paginated in sets of ten, including failed runs. A handled failure UUID can open its partial trace. Reports and investigations can be downloaded as JSON. `AppTest` checks actions and reruns with a fake API; a real-browser smoke check is recorded separately. See [ADR 0008](adr/0008-streamlit-interface.md).

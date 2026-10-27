@@ -1,4 +1,4 @@
-"""Assemble the overview, Stages 01–08, CI, reference pages and results."""
+"""Assemble the overview, Stages 01–10, CI, reference pages and results."""
 
 from html import escape
 
@@ -218,6 +218,29 @@ def build_story(verification, dependencies, lock_packages, facts, counts):
             AMBER_L,
         ),
     ]
+
+    alignment = verification.get("documentation_alignment")
+    if alignment:
+        story += [
+            Spacer(1, 6),
+            p(
+                tr(
+                    "<b>Как читать документацию:</b> README содержит план и оглавление; "
+                    "docs/instructions/ — короткие английские инструкции; "
+                    "docs/STAGE_NN.md и docs/CI_CD.md — подробные русские руководства; "
+                    "APPROACH и ADR — архитектурные решения. Структура проверена "
+                    f"{alignment['checked_at']}; полный прогон приложения датирован "
+                    f"{verification['checked_at']} и не повторялся целиком.",
+                    "<b>Documentation map:</b> README contains the roadmap and index; "
+                    "docs/instructions/ holds short English task instructions; "
+                    "docs/STAGE_NN.md and docs/CI_CD.md are detailed Russian guides; "
+                    "APPROACH and ADRs explain architecture decisions. Structure checked "
+                    f"on {alignment['checked_at']}; the full application run is dated "
+                    f"{verification['checked_at']} and was not repeated in full.",
+                ),
+                SMALL,
+            ),
+        ]
 
     if language() == "en":
         # Source excerpts preserve the language and names used by the project.

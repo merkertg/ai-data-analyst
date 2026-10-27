@@ -527,5 +527,50 @@
       "original_db_services_preserved": true
     }
   },
-  "http_checked_at": "2026-10-22"
+  "http_checked_at": "2026-10-22",
+  "documentation_alignment": {
+    "checked_at": "2026-10-27",
+    "base_commit": "f8b6a78",
+    "scope": {
+      "ru": "Завершение приведения документации к структуре AI Support Agent; код приложения, workflow и зависимости не менялись.",
+      "en": "Completed documentation alignment with AI Support Agent; application code, workflow and dependencies are unchanged."
+    },
+    "checks": {
+      "unit_tests": {
+        "passed": 522,
+        "deselected_integration": 168,
+        "seconds": 3.02
+      },
+      "ruff_check": "pass",
+      "ruff_format": {
+        "status": "pass",
+        "files": 198
+      },
+      "mypy": {
+        "status": "pass",
+        "source_files": 130
+      },
+      "markdown_links": {
+        "status": "pass",
+        "links": 398,
+        "files": 48
+      },
+      "pdf": {
+        "status": "pass",
+        "pages": {
+          "ru": 54,
+          "en": 54
+        },
+        "visual_review": {
+          "ru": "Обе версии отрендерены полностью и просмотрены на контактных листах; изменённая навигация и итоги дополнительно проверены крупно.",
+          "en": "Both complete versions rendered and reviewed on contact sheets; changed navigation and verification results also inspected at full size."
+        }
+      },
+      "git_diff_check": "pass"
+    },
+    "limits": {
+      "ru": "168 интеграционных тестов исключены маркером; PostgreSQL, Docker, сетевой аудит и настоящий OpenAI повторно не проверялись. Полные результаты приложения выше относятся к 23 октября; HTTP и evals имеют собственные даты. Удалённый CI итогового коммита не подтверждён.",
+      "en": "168 integration tests were deselected by marker; PostgreSQL, Docker, the online audit and real OpenAI were not rechecked. Full application results above belong to 23 October; HTTP and evals have their own dates. Remote CI for the final commit is unconfirmed."
+    }
+  }
 }

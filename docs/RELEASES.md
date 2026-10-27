@@ -1,5 +1,7 @@
 # Версии и публикация образа
 
+[← README](../README.md) · [CI/CD подробно](CI_CD.md)
+
 Как проверенный образ попадает в GitHub Container Registry (GHCR), как
 выпустить версию и как запустить готовый образ. Короткая английская версия —
 [CI and delivery](instructions/ci-and-delivery.md), устройство pipeline —
@@ -19,7 +21,7 @@
 ## 2. Что проверяется до GHCR
 
 1. Ruff, строгий mypy, миграции вверх, `alembic check` и откат.
-2. 600 тестов на настоящей PostgreSQL; покрытие строк и ветвей ≥ 90 %.
+2. Все тесты на настоящей PostgreSQL; покрытие строк и ветвей ≥ 90 %.
 3. Аудит `uv.lock`: новая уязвимость или просроченное исключение — ошибка.
 4. Сборка образа и проверка: UID 10001, нет pytest, Ruff, mypy и uv.
 5. `docker compose up`: миграции, демо-данные, токен, API и интерфейс healthy.
@@ -70,7 +72,7 @@ APP_IMAGE=ghcr.io/merkertg/ai-data-analyst:v1.0.0 docker compose up --no-build
 | --- | --- | --- |
 | `Validate version tag` упал | Тег не вида `vX.Y.Z` или не на `main` | Удалить локальный тег, создать правильный на коммите из `main` |
 | `denied: permission_denied` при push | У workflow нет права на пакеты | В Settings → Actions → General разрешить Read and write для `GITHUB_TOKEN`, либо дать доступ пакету |
-| `Audit runtime dependencies` упал | Новая уязвимость или истёк срок исключения | См. [DEPENDENCY_UPDATES.md](DEPENDENCY_UPDATES.md) |
+| `Audit runtime dependencies` упал | Новая уязвимость, истёкшее или лишнее исключение | См. [DEPENDENCY_UPDATES.md](DEPENDENCY_UPDATES.md) |
 | Smoke упал на числах | Демо-набор или расчёт изменились | Сравнить с [VERIFICATION.md](VERIFICATION.md), запустить стенд локально |
 
 ## 7. Ограничения

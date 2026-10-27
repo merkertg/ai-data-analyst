@@ -1,15 +1,15 @@
-# Archived PDF guides
+# Архив PDF-руководств
 
-This archive preserves earlier PDF guides moved from the shared `AI Forge`
-folder. Their verification results and project details describe historical
-snapshots and are not the current project status.
+Здесь сохранены предыдущие версии руководства. Их результаты проверок и описание
+состояния проекта относятся к дате выпуска и не являются текущими.
 
-Use the current guides: [Russian](../ai-data-analyst-guide.pdf) and
-[English](../ai-data-analyst-guide-en.pdf).
+- Текущее руководство: [на русском](../ai-data-analyst-guide.pdf) и
+  [на английском](../ai-data-analyst-guide-en.pdf).
+- Архивная версия от 22 октября 2026 года, 17:29 (Asia/Tashkent):
+  [на русском](2026-10-22/ai-data-analyst-guide.pdf) и
+  [на английском](2026-10-22/ai-data-analyst-guide-en.pdf). По 54 страницы,
+  исторические результаты 600 тестов; выпущена до стабилизации этапов 09–10.
 
-| Snapshot date | Russian guide | English guide | Historical results |
-| --- | --- | --- | --- |
-| 2026-10-22, 17:29 (Asia/Tashkent) | [PDF](2026-10-22/ai-data-analyst-guide.pdf) | [PDF](2026-10-22/ai-data-analyst-guide-en.pdf) | 54 pages per version; 600 tests; before the Stage 09–10 stabilization |
-
-Both archived files retain their original bytes. Current guides remain in
-`docs/guide/`; rebuilding them does not update this archive.
+23 октября 2026 года архивные версии перенесены из общей папки `AI Forge`
+без изменения содержимого. Новые сборки сохраняются в текущем руководстве,
+а эти версии остаются для истории.
